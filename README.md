@@ -49,8 +49,7 @@ python scripts/grafana_push_metrics.py -p <GCP_PROJECT_ID> --dry-run
 | `scripts/grafana_push_metrics_standalone.py` | Standalone version (no external dependencies beyond stdlib) |
 | `scripts/claude_usage_with_cost.py` | Generate CSV/JSON cost reports |
 | `scripts/claude_usage_report.py` | Basic usage report (request counts only) |
-| `scripts/grafana_push_metrics_gcloud.sh` | Bash version using `gcloud` CLI |
-| `scripts/grafana_push_metrics_simple.sh` | Lightweight `sh`-compatible version using `curl` + `jq` |
+| `scripts/vertex_claude_exporter/` | Shared library (config, parsing, cost estimation) |
 
 ## Prometheus Metrics
 

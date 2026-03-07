@@ -40,6 +40,10 @@ def parse_entry(entry) -> dict:
         if operation.get("last") and not operation.get("first"):
             return None
 
+        # Skip utility endpoints that aren't actual model calls
+        if model == "count-tokens":
+            return None
+
         return {"email": email, "model": model}
     except Exception as e:
         logger.debug("Failed to parse log entry: %s", e)
