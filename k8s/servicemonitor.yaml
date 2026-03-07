@@ -1,0 +1,18 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: pushgateway
+  namespace: claude-vertex-metrics
+  labels:
+    app: pushgateway
+spec:
+  selector:
+    matchLabels:
+      app: pushgateway
+  endpoints:
+    - port: http
+      interval: 30s
+      honorLabels: true  # Important: preserve labels from pushed metrics
+  namespaceSelector:
+    matchNames:
+      - claude-vertex-metrics

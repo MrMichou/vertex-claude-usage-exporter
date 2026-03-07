@@ -1,0 +1,246 @@
+apiVersion: v1
+data:
+  grafana_push_metrics.py: "#!/usr/bin/env python3\r\n\"\"\"\r\nPush Claude usage
+    metrics from Vertex AI to Prometheus Pushgateway for Grafana.\r\nCollects usage
+    data from Cloud Logging and exposes it as Prometheus metrics.\r\n\"\"\"\r\n\r\nimport
+    argparse\r\nimport logging\r\nimport re\r\nimport sys\r\nimport time\r\nimport
+    traceback\r\nfrom collections import defaultdict\r\nfrom datetime import datetime,
+    timedelta, timezone\r\nfrom google.auth import exceptions as auth_exceptions\r\nfrom
+    google.api_core import exceptions as api_exceptions\r\nfrom google.cloud import
+    logging as cloud_logging\r\nfrom google.cloud.logging_v2 import DESCENDING\r\nfrom
+    prometheus_client import CollectorRegistry, Gauge, push_to_gateway\r\n\r\nlogger
+    = logging.getLogger(__name__)\r\n\r\n\r\n# Pricing per million tokens (January
+    2026)\r\nPRICING = {\r\n    'claude-opus-4-6': {'input': 5.00, 'output': 25.00},\r\n
+    \   'claude-opus-4-5': {'input': 5.00, 'output': 25.00},\r\n    'claude-opus-4':
+    {'input': 15.00, 'output': 75.00},\r\n    'claude-3-opus': {'input': 15.00, 'output':
+    75.00},\r\n    'claude-sonnet-4-5': {'input': 3.00, 'output': 15.00},\r\n    'claude-sonnet-4':
+    {'input': 3.00, 'output': 15.00},\r\n    'claude-3-5-sonnet': {'input': 3.00,
+    'output': 15.00},\r\n    'claude-haiku-4-5': {'input': 1.00, 'output': 5.00},\r\n
+    \   'claude-3-5-haiku': {'input': 1.00, 'output': 5.00},\r\n    'count-tokens':
+    {'input': 0.00, 'output': 0.00},\r\n    'default': {'input': 3.00, 'output': 15.00},\r\n}\r\n\r\n#
+    Calibrated token averages per model (based on January 2026 GCP billing data)\r\n#
+    These values were derived from actual billing to match real costs\r\nMODEL_TOKEN_AVERAGES
+    = {\r\n    'claude-opus-4-6': {'input': 8871, 'output': 3548},\r\n    'claude-opus-4-5':
+    {'input': 8871, 'output': 3548},\r\n    'claude-opus-4': {'input': 8871, 'output':
+    3548},\r\n    'claude-3-opus': {'input': 8871, 'output': 3548},\r\n    'claude-sonnet-4-5':
+    {'input': 4820, 'output': 1928},\r\n    'claude-sonnet-4': {'input': 3309, 'output':
+    1323},\r\n    'claude-3-5-sonnet': {'input': 3309, 'output': 1323},\r\n    'claude-haiku-4-5':
+    {'input': 840, 'output': 336},\r\n    'claude-3-5-haiku': {'input': 382, 'output':
+    153},\r\n    'count-tokens': {'input': 0, 'output': 0},\r\n    'default': {'input':
+    3000, 'output': 1200},\r\n}\r\n\r\n# Default token averages (fallback, used if
+    --avg-input-tokens/--avg-output-tokens specified)\r\nDEFAULT_AVG_INPUT_TOKENS
+    = 3000\r\nDEFAULT_AVG_OUTPUT_TOKENS = 1200\r\n\r\n# Transient error types for
+    retry logic\r\n_TRANSIENT_ERRORS = (\r\n    api_exceptions.TooManyRequests,\r\n
+    \   api_exceptions.ServiceUnavailable,\r\n    api_exceptions.InternalServerError,\r\n
+    \   api_exceptions.GatewayTimeout,\r\n    ConnectionError,\r\n)\r\n\r\n\r\ndef
+    build_filter(target_date: datetime) -> str:\r\n    \"\"\"Build Cloud Logging filter
+    for the target date.\"\"\"\r\n    start_ts = target_date.replace(hour=0, minute=0,
+    second=0, microsecond=0, tzinfo=None)\r\n    end_ts = start_ts + timedelta(days=1)\r\n\r\n
+    \   start_str = start_ts.strftime('%Y-%m-%dT%H:%M:%SZ')\r\n    end_str = end_ts.strftime('%Y-%m-%dT%H:%M:%SZ')\r\n\r\n
+    \   filter_parts = [\r\n        'protoPayload.serviceName=\"aiplatform.googleapis.com\"',\r\n
+    \       'protoPayload.methodName=~\"rawPredict|streamRawPredict|Predict\"',\r\n
+    \       f'timestamp >= \"{start_str}\"',\r\n        f'timestamp < \"{end_str}\"',\r\n
+    \   ]\r\n\r\n    return ' '.join(filter_parts)\r\n\r\n\r\ndef fetch_logs(project_id:
+    str, filter_str: str, max_retries: int = 3) -> list:\r\n    \"\"\"Fetch logs from
+    Cloud Logging with retry on transient errors.\"\"\"\r\n    for attempt in range(1,
+    max_retries + 1):\r\n        try:\r\n            logger.info(\"Fetching logs (attempt
+    %d/%d)...\", attempt, max_retries)\r\n            # Use REST API instead of gRPC
+    (gRPC doesn't work through HTTP proxies)\r\n            client = cloud_logging.Client(project=project_id,
+    _use_grpc=False)\r\n            entries = []\r\n\r\n            for entry in client.list_entries(\r\n
+    \               filter_=filter_str,\r\n                order_by=DESCENDING,\r\n
+    \               page_size=1000\r\n            ):\r\n                entries.append(entry)\r\n\r\n
+    \           return entries\r\n\r\n        except (auth_exceptions.DefaultCredentialsError,
+    api_exceptions.PermissionDenied) as e:\r\n            logger.error(\"Authentication/permission
+    error (not retryable): %s\", e)\r\n            sys.exit(1)\r\n\r\n        except
+    _TRANSIENT_ERRORS as e:\r\n            if attempt < max_retries:\r\n                wait
+    = 2 ** attempt\r\n                logger.warning(\"Transient error: %s. Retrying
+    in %ds...\", e, wait)\r\n                time.sleep(wait)\r\n            else:\r\n
+    \               logger.error(\"Failed after %d attempts: %s\", max_retries, e)\r\n
+    \               logger.debug(\"Traceback:\\n%s\", traceback.format_exc())\r\n
+    \               raise\r\n\r\n        except Exception as e:\r\n            logger.error(\"Unexpected
+    error fetching logs: %s\", e)\r\n            logger.debug(\"Traceback:\\n%s\",
+    traceback.format_exc())\r\n            raise\r\n\r\n    return []\r\n\r\n\r\ndef
+    extract_model_name(resource_name: str) -> str:\r\n    \"\"\"Extract model name
+    from resourceName.\"\"\"\r\n    match = re.search(r'models/([^@/]+)', resource_name)\r\n
+    \   if match:\r\n        return match.group(1)\r\n    return 'unknown'\r\n\r\n\r\ndef
+    get_pricing_for_model(model_name: str) -> dict:\r\n    \"\"\"Get pricing for a
+    model, matching longest key first.\"\"\"\r\n    model_lower = model_name.lower()\r\n
+    \   for key in sorted(PRICING.keys(), key=len, reverse=True):\r\n        if key
+    != 'default' and key in model_lower:\r\n            return PRICING[key]\r\n    return
+    PRICING['default']\r\n\r\n\r\ndef get_token_averages_for_model(model_name: str)
+    -> dict:\r\n    \"\"\"Get calibrated token averages for a model, matching longest
+    key first.\"\"\"\r\n    model_lower = model_name.lower()\r\n    for key in sorted(MODEL_TOKEN_AVERAGES.keys(),
+    key=len, reverse=True):\r\n        if key != 'default' and key in model_lower:\r\n
+    \           return MODEL_TOKEN_AVERAGES[key]\r\n    return MODEL_TOKEN_AVERAGES['default']\r\n\r\n\r\ndef
+    parse_entry(entry) -> dict:\r\n    \"\"\"Parse a log entry and extract relevant
+    information.\"\"\"\r\n    try:\r\n        api_repr = entry.to_api_repr()\r\n        proto_payload
+    = api_repr.get('protoPayload', {})\r\n\r\n        # User email\r\n        auth_info
+    = proto_payload.get('authenticationInfo', {})\r\n        email = auth_info.get('principalEmail',
+    'unknown')\r\n\r\n        # Model\r\n        resource_name = proto_payload.get('resourceName',
+    '')\r\n        model = extract_model_name(resource_name)\r\n\r\n        # Check
+    if it's a Claude/Anthropic model\r\n        if 'claude' not in resource_name.lower()
+    and 'anthropic' not in resource_name.lower():\r\n            return None\r\n\r\n
+    \       # Deduplicate streaming requests: skip \"last-only\" operations\r\n        operation
+    = api_repr.get('operation', {})\r\n        if operation.get('last') and not operation.get('first'):\r\n
+    \           return None\r\n\r\n        return {\r\n            'email': email,\r\n
+    \           'model': model\r\n        }\r\n    except Exception as e:\r\n        logger.debug(\"Failed
+    to parse log entry: %s\", e)\r\n        return None\r\n\r\n\r\ndef aggregate_usage(entries:
+    list) -> dict:\r\n    \"\"\"\r\n    Aggregate usage by (email, model).\r\n    Returns:
+    {(email, model): count}\r\n    \"\"\"\r\n    usage = defaultdict(int)\r\n    skipped
+    = 0\r\n\r\n    for entry in entries:\r\n        parsed = parse_entry(entry)\r\n
+    \       if parsed:\r\n            key = (parsed['email'], parsed['model'])\r\n
+    \           usage[key] += 1\r\n        else:\r\n            skipped += 1\r\n\r\n
+    \   if skipped:\r\n        logger.info(\"Skipped %d non-Claude/unparseable entries
+    out of %d total\", skipped, len(entries))\r\n\r\n    return dict(usage)\r\n\r\n\r\ndef
+    estimate_cost(request_count: int, model_name: str, avg_input: int = None, avg_output:
+    int = None, use_calibrated: bool = True) -> dict:\r\n    \"\"\"Estimate cost based
+    on request count and average tokens.\r\n\r\n    If use_calibrated is True and
+    avg_input/avg_output are None, uses model-specific\r\n    calibrated token averages
+    derived from actual GCP billing data.\r\n    \"\"\"\r\n    pricing = get_pricing_for_model(model_name)\r\n\r\n
+    \   # Use calibrated model-specific averages if not overridden\r\n    if use_calibrated
+    and avg_input is None and avg_output is None:\r\n        model_avgs = get_token_averages_for_model(model_name)\r\n
+    \       avg_input = model_avgs['input']\r\n        avg_output = model_avgs['output']\r\n
+    \   else:\r\n        if avg_input is None:\r\n            avg_input = DEFAULT_AVG_INPUT_TOKENS\r\n
+    \       if avg_output is None:\r\n            avg_output = DEFAULT_AVG_OUTPUT_TOKENS\r\n\r\n
+    \   est_input_tokens = request_count * avg_input\r\n    est_output_tokens = request_count
+    * avg_output\r\n\r\n    input_cost = (est_input_tokens / 1_000_000) * pricing['input']\r\n
+    \   output_cost = (est_output_tokens / 1_000_000) * pricing['output']\r\n\r\n
+    \   return {\r\n        'input_tokens': est_input_tokens,\r\n        'output_tokens':
+    est_output_tokens,\r\n        'cost_usd': round(input_cost + output_cost, 4)\r\n
+    \   }\r\n\r\n\r\ndef push_metrics_to_gateway(\r\n    usage: dict,\r\n    target_date:
+    datetime,\r\n    pushgateway_url: str,\r\n    job_name: str,\r\n    project_id:
+    str,\r\n    avg_input: int = None,\r\n    avg_output: int = None,\r\n    use_calibrated:
+    bool = True\r\n):\r\n    \"\"\"Push metrics to Prometheus Pushgateway.\"\"\"\r\n\r\n
+    \   registry = CollectorRegistry()\r\n    date_str = target_date.strftime('%Y-%m-%d')\r\n\r\n
+    \   # Define metrics\r\n    requests_gauge = Gauge(\r\n        'claude_vertex_requests_total',\r\n
+    \       'Total Claude API requests on Vertex AI',\r\n        ['user', 'model',
+    'date', 'project'],\r\n        registry=registry\r\n    )\r\n\r\n    cost_gauge
+    = Gauge(\r\n        'claude_vertex_estimated_cost_usd',\r\n        'Estimated
+    cost in USD for Claude API usage',\r\n        ['user', 'model', 'date', 'project'],\r\n
+    \       registry=registry\r\n    )\r\n\r\n    input_tokens_gauge = Gauge(\r\n
+    \       'claude_vertex_estimated_input_tokens',\r\n        'Estimated input tokens
+    for Claude API usage',\r\n        ['user', 'model', 'date', 'project'],\r\n        registry=registry\r\n
+    \   )\r\n\r\n    output_tokens_gauge = Gauge(\r\n        'claude_vertex_estimated_output_tokens',\r\n
+    \       'Estimated output tokens for Claude API usage',\r\n        ['user', 'model',
+    'date', 'project'],\r\n        registry=registry\r\n    )\r\n\r\n    # Aggregated
+    metrics (without user dimension for overview)\r\n    total_requests_gauge = Gauge(\r\n
+    \       'claude_vertex_total_requests',\r\n        'Total Claude API requests
+    across all users',\r\n        ['model', 'date', 'project'],\r\n        registry=registry\r\n
+    \   )\r\n\r\n    total_cost_gauge = Gauge(\r\n        'claude_vertex_total_cost_usd',\r\n
+    \       'Total estimated cost in USD across all users',\r\n        ['model', 'date',
+    'project'],\r\n        registry=registry\r\n    )\r\n\r\n    total_users_gauge
+    = Gauge(\r\n        'claude_vertex_unique_users',\r\n        'Number of unique
+    users',\r\n        ['date', 'project'],\r\n        registry=registry\r\n    )\r\n\r\n
+    \   total_input_tokens_gauge = Gauge(\r\n        'claude_vertex_total_input_tokens',\r\n
+    \       'Total estimated input tokens across all users',\r\n        ['model',
+    'date', 'project'],\r\n        registry=registry\r\n    )\r\n\r\n    total_output_tokens_gauge
+    = Gauge(\r\n        'claude_vertex_total_output_tokens',\r\n        'Total estimated
+    output tokens across all users',\r\n        ['model', 'date', 'project'],\r\n
+    \       registry=registry\r\n    )\r\n\r\n    # Populate per-user metrics\r\n
+    \   model_totals = defaultdict(lambda: {'requests': 0, 'cost': 0.0, 'input_tokens':
+    0, 'output_tokens': 0})\r\n    unique_users = set()\r\n\r\n    for (email, model),
+    count in usage.items():\r\n        cost_info = estimate_cost(count, model, avg_input,
+    avg_output, use_calibrated)\r\n\r\n        # Sanitize email for Prometheus labels
+    (replace @ and . with _)\r\n        sanitized_email = email.replace('@', '_at_').replace('.',
+    '_')\r\n\r\n        requests_gauge.labels(\r\n            user=sanitized_email,\r\n
+    \           model=model,\r\n            date=date_str,\r\n            project=project_id\r\n
+    \       ).set(count)\r\n\r\n        cost_gauge.labels(\r\n            user=sanitized_email,\r\n
+    \           model=model,\r\n            date=date_str,\r\n            project=project_id\r\n
+    \       ).set(cost_info['cost_usd'])\r\n\r\n        input_tokens_gauge.labels(\r\n
+    \           user=sanitized_email,\r\n            model=model,\r\n            date=date_str,\r\n
+    \           project=project_id\r\n        ).set(cost_info['input_tokens'])\r\n\r\n
+    \       output_tokens_gauge.labels(\r\n            user=sanitized_email,\r\n            model=model,\r\n
+    \           date=date_str,\r\n            project=project_id\r\n        ).set(cost_info['output_tokens'])\r\n\r\n
+    \       # Accumulate totals\r\n        model_totals[model]['requests'] += count\r\n
+    \       model_totals[model]['cost'] += cost_info['cost_usd']\r\n        model_totals[model]['input_tokens']
+    += cost_info['input_tokens']\r\n        model_totals[model]['output_tokens'] +=
+    cost_info['output_tokens']\r\n        unique_users.add(email)\r\n\r\n    # Populate
+    aggregated metrics\r\n    for model, totals in model_totals.items():\r\n        total_requests_gauge.labels(\r\n
+    \           model=model,\r\n            date=date_str,\r\n            project=project_id\r\n
+    \       ).set(totals['requests'])\r\n\r\n        total_cost_gauge.labels(\r\n
+    \           model=model,\r\n            date=date_str,\r\n            project=project_id\r\n
+    \       ).set(totals['cost'])\r\n\r\n        total_input_tokens_gauge.labels(\r\n
+    \           model=model,\r\n            date=date_str,\r\n            project=project_id\r\n
+    \       ).set(totals['input_tokens'])\r\n\r\n        total_output_tokens_gauge.labels(\r\n
+    \           model=model,\r\n            date=date_str,\r\n            project=project_id\r\n
+    \       ).set(totals['output_tokens'])\r\n\r\n    total_users_gauge.labels(\r\n
+    \       date=date_str,\r\n        project=project_id\r\n    ).set(len(unique_users))\r\n\r\n
+    \   # Push to gateway\r\n    push_to_gateway(pushgateway_url, job=job_name, registry=registry)\r\n\r\n
+    \   return {\r\n        'total_requests': sum(model_totals[m]['requests'] for
+    m in model_totals),\r\n        'total_cost': sum(model_totals[m]['cost'] for m
+    in model_totals),\r\n        'unique_users': len(unique_users),\r\n        'models':
+    list(model_totals.keys())\r\n    }\r\n\r\n\r\ndef main():\r\n    parser = argparse.ArgumentParser(\r\n
+    \       description=\"Push Claude Vertex AI usage metrics to Prometheus Pushgateway\"\r\n
+    \   )\r\n    parser.add_argument(\r\n        '--project', '-p',\r\n        required=True,\r\n
+    \       help='GCP Project ID'\r\n    )\r\n    parser.add_argument(\r\n        '--date',
+    '-d',\r\n        default=None,\r\n        help='Report date (YYYY-MM-DD). Default:
+    yesterday'\r\n    )\r\n    parser.add_argument(\r\n        '--pushgateway', '-g',\r\n
+    \       default='localhost:9091',\r\n        help='Prometheus Pushgateway URL
+    (default: localhost:9091)'\r\n    )\r\n    parser.add_argument(\r\n        '--job',
+    '-j',\r\n        default=None,\r\n        help='Prometheus job name (default:
+    claude_vertex_YYYY-MM-DD based on date)'\r\n    )\r\n    parser.add_argument(\r\n
+    \       '--avg-input-tokens',\r\n        type=int,\r\n        default=None,\r\n
+    \       help='Override average input tokens per request (disables per-model calibration)'\r\n
+    \   )\r\n    parser.add_argument(\r\n        '--avg-output-tokens',\r\n        type=int,\r\n
+    \       default=None,\r\n        help='Override average output tokens per request
+    (disables per-model calibration)'\r\n    )\r\n    parser.add_argument(\r\n        '--no-calibrated',\r\n
+    \       action='store_true',\r\n        help='Disable calibrated per-model token
+    averages, use defaults instead'\r\n    )\r\n    parser.add_argument(\r\n        '--dry-run',\r\n
+    \       action='store_true',\r\n        help='Collect metrics but do not push
+    to gateway'\r\n    )\r\n\r\n    args = parser.parse_args()\r\n\r\n    logging.basicConfig(\r\n
+    \       level=logging.INFO,\r\n        format='%(asctime)s [%(levelname)s] %(message)s',\r\n
+    \       datefmt='%Y-%m-%d %H:%M:%S'\r\n    )\r\n\r\n    # Validate date\r\n    if
+    args.date:\r\n        try:\r\n            target_date = datetime.strptime(args.date,
+    '%Y-%m-%d').replace(tzinfo=timezone.utc)\r\n        except ValueError:\r\n            logger.error(\"Invalid
+    date format: '%s'. Expected YYYY-MM-DD.\", args.date)\r\n            sys.exit(1)\r\n
+    \   else:\r\n        target_date = (datetime.now(timezone.utc) - timedelta(days=1)).replace(\r\n
+    \           hour=0, minute=0, second=0, microsecond=0\r\n        )\r\n\r\n    #
+    Validate token counts\r\n    if args.avg_input_tokens is not None and args.avg_input_tokens
+    <= 0:\r\n        logger.error(\"--avg-input-tokens must be > 0, got %d\", args.avg_input_tokens)\r\n
+    \       sys.exit(1)\r\n    if args.avg_output_tokens is not None and args.avg_output_tokens
+    <= 0:\r\n        logger.error(\"--avg-output-tokens must be > 0, got %d\", args.avg_output_tokens)\r\n
+    \       sys.exit(1)\r\n\r\n    # Strip http(s):// prefix from pushgateway URL
+    if present\r\n    pushgateway_url = args.pushgateway\r\n    if pushgateway_url.startswith('http://')
+    or pushgateway_url.startswith('https://'):\r\n        logger.warning(\"Stripping
+    URL scheme from pushgateway address: %s\", pushgateway_url)\r\n        pushgateway_url
+    = pushgateway_url.split('://', 1)[1]\r\n\r\n    # Determine if using calibrated
+    mode\r\n    use_calibrated = not args.no_calibrated and args.avg_input_tokens
+    is None and args.avg_output_tokens is None\r\n\r\n    # Generate job name based
+    on date if not provided\r\n    job_name = args.job or f\"claude_vertex_{target_date.strftime('%Y-%m-%d')}\"\r\n\r\n
+    \   logger.info(\"Project: %s\", args.project)\r\n    logger.info(\"Date: %s\",
+    target_date.strftime('%Y-%m-%d'))\r\n    logger.info(\"Pushgateway: %s\", pushgateway_url)\r\n
+    \   logger.info(\"Job: %s\", job_name)\r\n    if use_calibrated:\r\n        logger.info(\"Token
+    estimates: Using calibrated per-model averages\")\r\n    else:\r\n        avg_in
+    = args.avg_input_tokens or DEFAULT_AVG_INPUT_TOKENS\r\n        avg_out = args.avg_output_tokens
+    or DEFAULT_AVG_OUTPUT_TOKENS\r\n        logger.info(\"Token estimates: %d input,
+    %d output (global override)\", avg_in, avg_out)\r\n\r\n    # Build filter and
+    fetch logs\r\n    filter_str = build_filter(target_date)\r\n    entries = fetch_logs(args.project,
+    filter_str)\r\n\r\n    logger.info(\"Log entries fetched: %d\", len(entries))\r\n\r\n
+    \   if not entries:\r\n        logger.info(\"No log entries found.\")\r\n        sys.exit(0)\r\n\r\n
+    \   # Aggregate usage\r\n    usage = aggregate_usage(entries)\r\n\r\n    if not
+    usage:\r\n        logger.info(\"No Claude API calls identified.\")\r\n        sys.exit(0)\r\n\r\n
+    \   logger.info(\"Claude API calls identified: %d\", sum(usage.values()))\r\n\r\n
+    \   if args.dry_run:\r\n        logger.info(\"[DRY RUN] Metrics that would be
+    pushed:\")\r\n        total_cost = 0\r\n        for (email, model), count in sorted(usage.items(),
+    key=lambda x: x[1], reverse=True):\r\n            cost_info = estimate_cost(count,
+    model, args.avg_input_tokens, args.avg_output_tokens, use_calibrated)\r\n            total_cost
+    += cost_info['cost_usd']\r\n            logger.info(\"  %s / %s: %d requests,
+    $%.4f\", email, model, count, cost_info['cost_usd'])\r\n        logger.info(\"Total
+    estimated cost: $%.2f\", total_cost)\r\n        logger.info(\"Metrics NOT pushed
+    (dry run mode)\")\r\n    else:\r\n        # Push metrics to gateway\r\n        try:\r\n
+    \           result = push_metrics_to_gateway(\r\n                usage=usage,\r\n
+    \               target_date=target_date,\r\n                pushgateway_url=pushgateway_url,\r\n
+    \               job_name=job_name,\r\n                project_id=args.project,\r\n
+    \               avg_input=args.avg_input_tokens,\r\n                avg_output=args.avg_output_tokens,\r\n
+    \               use_calibrated=use_calibrated\r\n            )\r\n\r\n            logger.info(\"Metrics
+    pushed successfully to %s\", pushgateway_url)\r\n            logger.info(\"  Total
+    requests: %d\", result['total_requests'])\r\n            logger.info(\"  Estimated
+    cost: $%.2f\", result['total_cost'])\r\n            logger.info(\"  Unique users:
+    %d\", result['unique_users'])\r\n            logger.info(\"  Models: %s\", ',
+    '.join(result['models']))\r\n\r\n        except Exception as e:\r\n            logger.error(\"Failed
+    to push metrics: %s\", e)\r\n            sys.exit(1)\r\n\r\n\r\nif __name__ ==
+    '__main__':\r\n    main()\r\n"
+kind: ConfigMap
+metadata:
+  name: metrics-pusher-script
+  namespace: claude-vertex-metrics

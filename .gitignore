@@ -1,0 +1,32 @@
+# Virtual environment
+venv/
+.venv/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+
+# Generated reports
+reports/*.csv
+reports/*.json
+
+# Logs
+*.log
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# GCP credentials (sensitive)
+k8s/gcp-sa-key.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Tool artifacts
+.claude-flow/
+.hive-mind/

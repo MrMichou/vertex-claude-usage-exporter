@@ -1,0 +1,120 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: claude-metrics-pusher
+  namespace: claude-vertex-metrics
+  labels:
+    app: claude-metrics-pusher
+spec:
+  # Run daily at 2:00 AM UTC (after midnight to capture full previous day)
+  schedule: "0 2 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 7
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      activeDeadlineSeconds: 600
+      backoffLimit: 3
+      template:
+        metadata:
+          labels:
+            app: claude-metrics-pusher
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: metrics-pusher
+              image: python:3.11-slim
+              command:
+                - /bin/bash
+                - -c
+                - |
+                  set -e
+                  echo "Installing dependencies..."
+                  pip install --quiet --no-cache-dir google-cloud-logging prometheus-client
+                  echo "Running metrics pusher..."
+                  python /app/grafana_push_metrics.py \
+                    --project "$GCP_PROJECT_ID" \
+                    --pushgateway "$PUSHGATEWAY_URL"
+              env:
+                - name: GCP_PROJECT_ID
+                  valueFrom:
+                    configMapKeyRef:
+                      name: metrics-pusher-config
+                      key: gcp_project_id
+                - name: PUSHGATEWAY_URL
+                  valueFrom:
+                    configMapKeyRef:
+                      name: metrics-pusher-config
+                      key: pushgateway_url
+                - name: GOOGLE_APPLICATION_CREDENTIALS
+                  value: /var/secrets/google/key.json
+                # Proxy settings for HTTP/HTTPS
+                - name: HTTPS_PROXY
+                  valueFrom:
+                    configMapKeyRef:
+                      name: metrics-pusher-config
+                      key: https_proxy
+                - name: HTTP_PROXY
+                  valueFrom:
+                    configMapKeyRef:
+                      name: metrics-pusher-config
+                      key: http_proxy
+                - name: https_proxy
+                  valueFrom:
+                    configMapKeyRef:
+                      name: metrics-pusher-config
+                      key: https_proxy
+                - name: http_proxy
+                  valueFrom:
+                    configMapKeyRef:
+                      name: metrics-pusher-config
+                      key: http_proxy
+                - name: NO_PROXY
+                  valueFrom:
+                    configMapKeyRef:
+                      name: metrics-pusher-config
+                      key: no_proxy
+                - name: no_proxy
+                  valueFrom:
+                    configMapKeyRef:
+                      name: metrics-pusher-config
+                      key: no_proxy
+                # Force REST API instead of gRPC (gRPC doesn't support HTTP proxy)
+                - name: GOOGLE_CLOUD_CPP_ENABLE_CLOG
+                  value: "yes"
+              securityContext:
+                allowPrivilegeEscalation: false
+              volumeMounts:
+                - name: script
+                  mountPath: /app
+                - name: gcp-credentials
+                  mountPath: /var/secrets/google
+                  readOnly: true
+              resources:
+                requests:
+                  memory: "256Mi"
+                  cpu: "100m"
+                limits:
+                  memory: "512Mi"
+                  cpu: "500m"
+          volumes:
+            - name: script
+              configMap:
+                name: metrics-pusher-script
+                defaultMode: 0755
+            - name: gcp-credentials
+              secret:
+                secretName: gcp-credentials
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: metrics-pusher-config
+  namespace: claude-vertex-metrics
+data:
+  gcp_project_id: "your-gcp-project-id"
+  pushgateway_url: "pushgateway:9091"
+  # Uncomment and set if behind a corporate proxy
+  # https_proxy: "http://your-proxy:3128"
+  # http_proxy: "http://your-proxy:3128"
+  no_proxy: "localhost,.cluster.local,pushgateway,10.0.0.0/8"
