@@ -9,8 +9,8 @@ set -e
 # Configuration from environment or defaults
 PROJECT_ID="${GCP_PROJECT_ID:-}"
 PUSHGATEWAY="${PUSHGATEWAY_URL:-pushgateway:9091}"
-AVG_INPUT="${AVG_INPUT_TOKENS:-1500}"
-AVG_OUTPUT="${AVG_OUTPUT_TOKENS:-500}"
+AVG_INPUT="${AVG_INPUT_TOKENS:-3000}"
+AVG_OUTPUT="${AVG_OUTPUT_TOKENS:-1200}"
 JOB_NAME="${JOB_NAME:-claude_vertex_usage}"
 TARGET_DATE="${TARGET_DATE:-$(date -d 'yesterday' '+%Y-%m-%d')}"
 
