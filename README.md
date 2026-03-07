@@ -137,6 +137,26 @@ Import the JSON files from `dashboards/` into Grafana:
 3. Add Prometheus as a Grafana data source
 4. Import dashboards from `dashboards/`
 
+## Releasing
+
+Versions follow [Semantic Versioning](https://semver.org/). To create a new release:
+
+```bash
+# Bump version (updates Chart.yaml, commits, and creates a git tag)
+./scripts/bump-version.sh patch   # 0.1.0 -> 0.1.1
+./scripts/bump-version.sh minor   # 0.1.1 -> 0.2.0
+./scripts/bump-version.sh major   # 0.2.0 -> 1.0.0
+./scripts/bump-version.sh 1.2.3   # explicit version
+
+# Push the commit and tag to trigger the release pipeline
+git push origin main v0.1.1
+```
+
+The release pipeline will automatically:
+- Build and push the Docker image to `ghcr.io` (tagged with version + `latest`)
+- Package the Helm chart and attach it to the GitHub Release
+- Generate release notes from commit history
+
 ## License
 
 MIT
