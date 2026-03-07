@@ -1,0 +1,63 @@
+config:
+  # GCP project ID (required)
+  gcpProjectId: ""
+  # Pushgateway address
+  pushgatewayUrl: "pushgateway:9091"
+  # Proxy settings (leave empty to disable)
+  httpsProxy: ""
+  httpProxy: ""
+  noProxy: "localhost,.cluster.local,pushgateway,10.0.0.0/8"
+
+cronjob:
+  # Cron schedule (default: daily at 2 AM UTC)
+  schedule: "0 2 * * *"
+  # Image for the metrics pusher
+  image:
+    repository: python
+    tag: "3.11-slim"
+    pullPolicy: IfNotPresent
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "100m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+  # Number of successful/failed jobs to keep
+  successfulJobsHistoryLimit: 7
+  failedJobsHistoryLimit: 3
+  # Job timeout in seconds
+  activeDeadlineSeconds: 600
+  backoffLimit: 3
+
+# GCP service account credentials secret
+gcpCredentials:
+  # Name of an existing secret containing the SA key
+  existingSecret: ""
+  # Key within the secret
+  secretKey: "key.json"
+
+pushgateway:
+  # Deploy a Pushgateway instance
+  enabled: true
+  image:
+    repository: prom/pushgateway
+    tag: "v1.9.0"
+    pullPolicy: IfNotPresent
+  resources:
+    requests:
+      memory: "64Mi"
+      cpu: "50m"
+    limits:
+      memory: "128Mi"
+      cpu: "100m"
+  persistence:
+    # Use emptyDir by default; set to a PVC for persistence across restarts
+    enabled: false
+    size: "1Gi"
+    storageClass: ""
+
+serviceMonitor:
+  # Create a ServiceMonitor for Prometheus Operator
+  enabled: false
+  interval: "30s"

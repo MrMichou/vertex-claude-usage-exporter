@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "vertex-claude-usage-exporter.fullname" . }}-config
+  labels:
+    {{- include "vertex-claude-usage-exporter.labels" . | nindent 4 }}
+data:
+  gcp_project_id: {{ .Values.config.gcpProjectId | quote }}
+  pushgateway_url: {{ .Values.config.pushgatewayUrl | quote }}
+  {{- if .Values.config.httpsProxy }}
+  https_proxy: {{ .Values.config.httpsProxy | quote }}
+  {{- end }}
+  {{- if .Values.config.httpProxy }}
+  http_proxy: {{ .Values.config.httpProxy | quote }}
+  {{- end }}
+  no_proxy: {{ .Values.config.noProxy | quote }}

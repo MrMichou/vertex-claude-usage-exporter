@@ -1,0 +1,101 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "vertex-claude-usage-exporter.fullname" . }}
+  labels:
+    {{- include "vertex-claude-usage-exporter.labels" . | nindent 4 }}
+spec:
+  schedule: {{ .Values.cronjob.schedule | quote }}
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: {{ .Values.cronjob.successfulJobsHistoryLimit }}
+  failedJobsHistoryLimit: {{ .Values.cronjob.failedJobsHistoryLimit }}
+  jobTemplate:
+    spec:
+      activeDeadlineSeconds: {{ .Values.cronjob.activeDeadlineSeconds }}
+      backoffLimit: {{ .Values.cronjob.backoffLimit }}
+      template:
+        metadata:
+          labels:
+            {{- include "vertex-claude-usage-exporter.selectorLabels" . | nindent 12 }}
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: metrics-pusher
+              image: "{{ .Values.cronjob.image.repository }}:{{ .Values.cronjob.image.tag }}"
+              imagePullPolicy: {{ .Values.cronjob.image.pullPolicy }}
+              command:
+                - /bin/bash
+                - -c
+                - |
+                  set -e
+                  echo "Installing dependencies..."
+                  pip install --quiet --no-cache-dir google-cloud-logging prometheus-client
+                  echo "Running metrics pusher..."
+                  python /app/grafana_push_metrics.py \
+                    --project "$GCP_PROJECT_ID" \
+                    --pushgateway "$PUSHGATEWAY_URL"
+              env:
+                - name: GCP_PROJECT_ID
+                  valueFrom:
+                    configMapKeyRef:
+                      name: {{ include "vertex-claude-usage-exporter.fullname" . }}-config
+                      key: gcp_project_id
+                - name: PUSHGATEWAY_URL
+                  valueFrom:
+                    configMapKeyRef:
+                      name: {{ include "vertex-claude-usage-exporter.fullname" . }}-config
+                      key: pushgateway_url
+                - name: GOOGLE_APPLICATION_CREDENTIALS
+                  value: /var/secrets/google/{{ .Values.gcpCredentials.secretKey }}
+                {{- if .Values.config.httpsProxy }}
+                - name: HTTPS_PROXY
+                  valueFrom:
+                    configMapKeyRef:
+                      name: {{ include "vertex-claude-usage-exporter.fullname" . }}-config
+                      key: https_proxy
+                - name: https_proxy
+                  valueFrom:
+                    configMapKeyRef:
+                      name: {{ include "vertex-claude-usage-exporter.fullname" . }}-config
+                      key: https_proxy
+                {{- end }}
+                {{- if .Values.config.httpProxy }}
+                - name: HTTP_PROXY
+                  valueFrom:
+                    configMapKeyRef:
+                      name: {{ include "vertex-claude-usage-exporter.fullname" . }}-config
+                      key: http_proxy
+                - name: http_proxy
+                  valueFrom:
+                    configMapKeyRef:
+                      name: {{ include "vertex-claude-usage-exporter.fullname" . }}-config
+                      key: http_proxy
+                {{- end }}
+                - name: NO_PROXY
+                  valueFrom:
+                    configMapKeyRef:
+                      name: {{ include "vertex-claude-usage-exporter.fullname" . }}-config
+                      key: no_proxy
+                - name: no_proxy
+                  valueFrom:
+                    configMapKeyRef:
+                      name: {{ include "vertex-claude-usage-exporter.fullname" . }}-config
+                      key: no_proxy
+              securityContext:
+                allowPrivilegeEscalation: false
+              volumeMounts:
+                - name: script
+                  mountPath: /app
+                - name: gcp-credentials
+                  mountPath: /var/secrets/google
+                  readOnly: true
+              resources:
+                {{- toYaml .Values.cronjob.resources | nindent 16 }}
+          volumes:
+            - name: script
+              configMap:
+                name: {{ include "vertex-claude-usage-exporter.fullname" . }}-script
+                defaultMode: 0755
+            - name: gcp-credentials
+              secret:
+                secretName: {{ include "vertex-claude-usage-exporter.credentialsSecretName" . }}

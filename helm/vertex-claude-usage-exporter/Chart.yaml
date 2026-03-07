@@ -1,0 +1,12 @@
+apiVersion: v2
+name: vertex-claude-usage-exporter
+description: Export Claude/Anthropic usage metrics from GCP Vertex AI to Prometheus
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - claude
+  - vertex-ai
+  - prometheus
+  - grafana
+  - cost-monitoring

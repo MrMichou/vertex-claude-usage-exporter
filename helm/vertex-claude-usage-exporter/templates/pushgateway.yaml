@@ -1,0 +1,93 @@
+{{- if .Values.pushgateway.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "vertex-claude-usage-exporter.fullname" . }}-pushgateway
+  labels:
+    {{- include "vertex-claude-usage-exporter.labels" . | nindent 4 }}
+    app.kubernetes.io/component: pushgateway
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "vertex-claude-usage-exporter.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: pushgateway
+  template:
+    metadata:
+      labels:
+        {{- include "vertex-claude-usage-exporter.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: pushgateway
+    spec:
+      containers:
+        - name: pushgateway
+          image: "{{ .Values.pushgateway.image.repository }}:{{ .Values.pushgateway.image.tag }}"
+          imagePullPolicy: {{ .Values.pushgateway.image.pullPolicy }}
+          args:
+            - --persistence.file=/data/pushgateway.dat
+            - --persistence.interval=5m
+          ports:
+            - containerPort: 9091
+              name: http
+          volumeMounts:
+            - name: data
+              mountPath: /data
+          resources:
+            {{- toYaml .Values.pushgateway.resources | nindent 12 }}
+          livenessProbe:
+            httpGet:
+              path: /-/healthy
+              port: 9091
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /-/ready
+              port: 9091
+            initialDelaySeconds: 5
+            periodSeconds: 10
+      volumes:
+        - name: data
+          {{- if .Values.pushgateway.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ include "vertex-claude-usage-exporter.fullname" . }}-pushgateway
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "vertex-claude-usage-exporter.fullname" . }}-pushgateway
+  labels:
+    {{- include "vertex-claude-usage-exporter.labels" . | nindent 4 }}
+    app.kubernetes.io/component: pushgateway
+spec:
+  type: ClusterIP
+  ports:
+    - port: 9091
+      targetPort: 9091
+      name: http
+  selector:
+    {{- include "vertex-claude-usage-exporter.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: pushgateway
+{{- if .Values.pushgateway.persistence.enabled }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "vertex-claude-usage-exporter.fullname" . }}-pushgateway
+  labels:
+    {{- include "vertex-claude-usage-exporter.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.pushgateway.persistence.size }}
+  {{- if .Values.pushgateway.persistence.storageClass }}
+  storageClassName: {{ .Values.pushgateway.persistence.storageClass }}
+  {{- end }}
+{{- end }}
+{{- end }}
