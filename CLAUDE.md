@@ -13,6 +13,11 @@ gcp_vertex/
 ├── CLAUDE.md                 # This file
 ├── requirements.txt          # Python dependencies
 ├── Dockerfile                # Container image for K8s deployment
+├── .github/
+│   ├── release.yml                      # Release notes categorization
+│   └── workflows/
+│       ├── ci.yml                       # CI: lint, test, helm-lint, docker build
+│       └── release.yml                  # Release: Docker push, Helm OCI, GitHub Release
 ├── scripts/                  # Python and Shell scripts
 │   ├── claude_usage_report.py           # Basic usage report
 │   ├── claude_usage_with_cost.py        # Report with cost estimation
@@ -31,6 +36,11 @@ gcp_vertex/
 │   ├── servicemonitor.yaml
 │   ├── metrics-pusher-configmap.yaml
 │   └── metrics-pusher-cronjob.yaml
+├── helm/                     # Helm chart
+│   └── vertex-claude-usage-exporter/
+│       ├── Chart.yaml
+│       ├── values.yaml
+│       └── templates/
 └── reports/                  # Generated CSV reports (gitignored)
 ```
 
@@ -175,3 +185,54 @@ kubectl apply -f k8s/metrics-pusher-cronjob.yaml
 # Add to crontab to push daily at 2 AM
 0 2 * * * /path/to/venv/bin/python /path/to/scripts/grafana_push_metrics.py -p PROJECT_ID -g pushgateway:9091
 ```
+
+## Releases and Packages
+
+### CI/CD Workflows
+
+- **CI** (`.github/workflows/ci.yml`) - Runs on push/PR to `main`: lint (ruff), tests (pytest), Helm lint, Docker build
+- **Release** (`.github/workflows/release.yml`) - Triggered by pushing a `v*` tag
+
+### Release Process
+
+1. Update the version in `helm/vertex-claude-usage-exporter/Chart.yaml` (must match the tag)
+2. Commit and push to `main`
+3. Tag and push:
+   ```bash
+   git tag v0.2.0
+   git push origin v0.2.0
+   ```
+
+The release workflow will automatically:
+- Verify the Helm chart version matches the tag
+- Build and push a **multi-arch Docker image** (amd64 + arm64) to GHCR
+- Package and push the **Helm chart as OCI artifact** to GHCR
+- Create a **GitHub Release** with auto-generated release notes and the Helm `.tgz` attached
+
+### Published Artifacts
+
+| Artifact | Location |
+|----------|----------|
+| Docker image | `ghcr.io/mrmichou/vertex-claude-usage-exporter:<version>` |
+| Helm chart (OCI) | `oci://ghcr.io/mrmichou/charts/vertex-claude-usage-exporter` |
+| Helm chart (.tgz) | GitHub Release attachment |
+
+### Installing from Packages
+
+```bash
+# Docker
+docker pull ghcr.io/mrmichou/vertex-claude-usage-exporter:0.1.0
+
+# Helm (OCI)
+helm pull oci://ghcr.io/mrmichou/charts/vertex-claude-usage-exporter --version 0.1.0
+helm install my-release oci://ghcr.io/mrmichou/charts/vertex-claude-usage-exporter
+```
+
+### Release Notes Configuration
+
+Release notes are auto-generated from merged PRs, categorized by labels (configured in `.github/release.yml`):
+- **Breaking Changes** (`breaking-change`)
+- **New Features** (`enhancement`, `feature`)
+- **Bug Fixes** (`bug`, `fix`)
+- **Infrastructure & CI** (`ci`, `infrastructure`, `helm`, `docker`)
+- **Documentation** (`documentation`)
