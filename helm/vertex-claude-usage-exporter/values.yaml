@@ -13,8 +13,8 @@ cronjob:
   schedule: "0 2 * * *"
   # Image for the metrics pusher
   image:
-    repository: python
-    tag: "3.11-slim"
+    repository: ghcr.io/mrmichou/vertex-claude-usage-exporter
+    tag: ""
     pullPolicy: IfNotPresent
   resources:
     requests:

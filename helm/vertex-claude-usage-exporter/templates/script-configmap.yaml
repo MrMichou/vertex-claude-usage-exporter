@@ -1,9 +1,0 @@
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: {{ include "vertex-claude-usage-exporter.fullname" . }}-script
-  labels:
-    {{- include "vertex-claude-usage-exporter.labels" . | nindent 4 }}
-data:
-  grafana_push_metrics.py: |
-{{ .Files.Get "files/grafana_push_metrics.py" | indent 4 }}
