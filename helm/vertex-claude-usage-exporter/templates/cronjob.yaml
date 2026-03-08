@@ -21,19 +21,13 @@ spec:
           restartPolicy: OnFailure
           containers:
             - name: metrics-pusher
-              image: "{{ .Values.cronjob.image.repository }}:{{ .Values.cronjob.image.tag }}"
+              image: "{{ .Values.cronjob.image.repository }}:{{ .Values.cronjob.image.tag | default .Chart.AppVersion }}"
               imagePullPolicy: {{ .Values.cronjob.image.pullPolicy }}
-              command:
-                - /bin/bash
-                - -c
-                - |
-                  set -e
-                  echo "Installing dependencies..."
-                  pip install --quiet --no-cache-dir google-cloud-logging prometheus-client
-                  echo "Running metrics pusher..."
-                  python /app/grafana_push_metrics.py \
-                    --project "$GCP_PROJECT_ID" \
-                    --pushgateway "$PUSHGATEWAY_URL"
+              args:
+                - --project
+                - "$(GCP_PROJECT_ID)"
+                - --pushgateway
+                - "$(PUSHGATEWAY_URL)"
               env:
                 - name: GCP_PROJECT_ID
                   valueFrom:
@@ -84,18 +78,12 @@ spec:
               securityContext:
                 allowPrivilegeEscalation: false
               volumeMounts:
-                - name: script
-                  mountPath: /app
                 - name: gcp-credentials
                   mountPath: /var/secrets/google
                   readOnly: true
               resources:
                 {{- toYaml .Values.cronjob.resources | nindent 16 }}
           volumes:
-            - name: script
-              configMap:
-                name: {{ include "vertex-claude-usage-exporter.fullname" . }}-script
-                defaultMode: 0755
             - name: gcp-credentials
               secret:
                 secretName: {{ include "vertex-claude-usage-exporter.credentialsSecretName" . }}
