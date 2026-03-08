@@ -21,7 +21,7 @@ jobs:
 
       - name: Verify Helm chart version matches tag
         run: |
-          chart_version=$(grep '^version:' helm/vertex-claude-usage-exporter/Chart.yaml | awk '{print $2}')
+          chart_version=$(grep '^version:' helm/vertex-claude-usage-exporter/Chart.yaml | awk '{print $2}' | tr -d '[:space:]')
           if [ "$chart_version" != "${{ steps.version.outputs.version }}" ]; then
             echo "ERROR: Chart version ($chart_version) does not match tag (${{ steps.version.outputs.version }})"
             echo "Update helm/vertex-claude-usage-exporter/Chart.yaml before tagging."
