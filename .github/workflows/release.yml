@@ -15,9 +15,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Extract version from tag
+      - name: Extract version and image name
         id: version
-        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+        run: |
+          echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+          echo "image=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
 
       - name: Verify Helm chart version matches tag
         run: |
@@ -45,8 +47,8 @@ jobs:
           push: true
           platforms: linux/amd64,linux/arm64
           tags: |
-            ghcr.io/${{ github.repository }}:${{ steps.version.outputs.version }}
-            ghcr.io/${{ github.repository }}:latest
+            ${{ steps.version.outputs.image }}:${{ steps.version.outputs.version }}
+            ${{ steps.version.outputs.image }}:latest
           labels: |
             org.opencontainers.image.title=vertex-claude-usage-exporter
             org.opencontainers.image.version=${{ steps.version.outputs.version }}
@@ -64,9 +66,11 @@ jobs:
             --destination .helm-packages/
 
       - name: Push Helm chart to GHCR
+        env:
+          OWNER: ${{ github.repository_owner }}
         run: |
           helm push .helm-packages/vertex-claude-usage-exporter-${{ steps.version.outputs.version }}.tgz \
-            oci://ghcr.io/${{ github.repository_owner }}/charts
+            "oci://ghcr.io/${OWNER,,}/charts"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
