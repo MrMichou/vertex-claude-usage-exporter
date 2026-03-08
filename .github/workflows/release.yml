@@ -43,16 +43,30 @@ jobs:
         with:
           context: .
           push: true
+          platforms: linux/amd64,linux/arm64
           tags: |
             ghcr.io/${{ github.repository }}:${{ steps.version.outputs.version }}
             ghcr.io/${{ github.repository }}:latest
+          labels: |
+            org.opencontainers.image.title=vertex-claude-usage-exporter
+            org.opencontainers.image.version=${{ steps.version.outputs.version }}
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.description=Export Claude/Anthropic usage metrics from GCP Vertex AI to Prometheus
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
 
       - name: Package Helm chart
         run: |
           helm package helm/vertex-claude-usage-exporter \
             --destination .helm-packages/
+
+      - name: Push Helm chart to GHCR
+        run: |
+          helm push .helm-packages/vertex-claude-usage-exporter-${{ steps.version.outputs.version }}.tgz \
+            oci://ghcr.io/${{ github.repository_owner }}/charts
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
