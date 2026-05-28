@@ -3,6 +3,8 @@
 # Pricing per million tokens (January 2026)
 # Source: https://cloud.google.com/vertex-ai/generative-ai/pricing
 PRICING = {
+    "claude-opus-4-8": {"input": 5.00, "output": 25.00},
+    "claude-opus-4-7": {"input": 5.00, "output": 25.00},
     "claude-opus-4-6": {"input": 5.00, "output": 25.00},
     "claude-opus-4-5": {"input": 5.00, "output": 25.00},
     "claude-opus-4": {"input": 15.00, "output": 75.00},
@@ -19,6 +21,8 @@ PRICING = {
 # Calibrated token averages per model (based on January 2026 GCP billing data)
 # These values were derived from actual billing to match real costs within 0.01%
 MODEL_TOKEN_AVERAGES = {
+    "claude-opus-4-8": {"input": 8871, "output": 3548},
+    "claude-opus-4-7": {"input": 8871, "output": 3548},
     "claude-opus-4-6": {"input": 8871, "output": 3548},
     "claude-opus-4-5": {"input": 8871, "output": 3548},
     "claude-opus-4": {"input": 8871, "output": 3548},
