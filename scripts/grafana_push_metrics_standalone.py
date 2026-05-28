@@ -25,7 +25,11 @@ logger = logging.getLogger(__name__)
 
 
 # Pricing per million tokens (January 2026)
+# NOTE: keep in sync with scripts/vertex_claude_exporter/config.py (source of truth).
+# This file is intentionally standalone (no package import) for drop-in k8s jobs.
 PRICING = {
+    "claude-opus-4-8": {"input": 5.00, "output": 25.00},
+    "claude-opus-4-7": {"input": 5.00, "output": 25.00},
     "claude-opus-4-6": {"input": 5.00, "output": 25.00},
     "claude-opus-4-5": {"input": 5.00, "output": 25.00},
     "claude-opus-4": {"input": 15.00, "output": 75.00},
@@ -41,6 +45,8 @@ PRICING = {
 
 # Calibrated token averages per model (based on January 2026 GCP billing data)
 MODEL_TOKEN_AVERAGES = {
+    "claude-opus-4-8": {"input": 8871, "output": 3548},
+    "claude-opus-4-7": {"input": 8871, "output": 3548},
     "claude-opus-4-6": {"input": 8871, "output": 3548},
     "claude-opus-4-5": {"input": 8871, "output": 3548},
     "claude-opus-4": {"input": 8871, "output": 3548},
