@@ -43,7 +43,7 @@ Key implementation details:
 | Model | Input | Output |
 |-------|-------|--------|
 | claude-3-5-haiku / claude-haiku-4-5 | $1.00 | $5.00 |
-| claude-sonnet-4 / claude-sonnet-4-5 | $3.00 | $15.00 |
+| claude-sonnet-4 / claude-sonnet-4-5 / claude-sonnet-4-6 | $3.00 | $15.00 |
 | claude-opus-4-5 / claude-opus-4-6 / claude-opus-4-7 / claude-opus-4-8 | $5.00 | $25.00 |
 | claude-opus-4 | $15.00 | $75.00 |
 
