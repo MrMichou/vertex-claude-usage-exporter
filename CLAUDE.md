@@ -36,7 +36,7 @@ Key implementation details:
 - Model matching: `sorted(keys, key=len, reverse=True)` for longest-key-first
 - Streaming dedup: skip entries where `operation.last=True` and `operation.first` absent
 - `estimate_cost()` uses independent `if` blocks (not `elif`) for default fallback
-- Calibrated per-model token averages from Jan 2026 billing (override with `--no-calibrated`)
+- Calibrated per-model token averages from Jun 2026 billing, incl. cache tokens (override with `--no-calibrated`)
 
 ## Pricing (per million tokens)
 
@@ -48,9 +48,10 @@ Key implementation details:
 | claude-fable-5 | $10.00 | $50.00 | $12.50 | $1.00 |
 | claude-opus-4 | $15.00 | $75.00 | $18.75 | $1.50 |
 
-Prompt caching: calibrated cache token averages default to 0 (audit logs carry no
-token counts and billing calibration predates cache SKU breakdown). Override per
-run with `--avg-cache-write-tokens` / `--avg-cache-read-tokens`.
+Prompt caching: cache token averages calibrated from June 2026 billing (cache SKU
+breakdown). Calibrated averages absorb the account's billed-vs-list factor (CAD +
+premium) so estimates match the invoice. Override per run with
+`--avg-cache-write-tokens` / `--avg-cache-read-tokens`.
 
 ## Releases
 

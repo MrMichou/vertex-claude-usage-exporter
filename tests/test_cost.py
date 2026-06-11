@@ -59,8 +59,10 @@ class TestGetPricingForModel:
 class TestGetTokenAveragesForModel:
     def test_sonnet_calibrated(self):
         avgs = get_token_averages_for_model("claude-sonnet-4-5")
-        assert avgs["input"] == 4820
-        assert avgs["output"] == 1928
+        assert avgs["input"] == 18569
+        assert avgs["output"] == 666
+        assert avgs["cache_write"] == 11251
+        assert avgs["cache_read"] == 67044
 
     def test_haiku_calibrated(self):
         avgs = get_token_averages_for_model("claude-3-5-haiku")
@@ -81,11 +83,15 @@ class TestEstimateCost:
 
     def test_calibrated_sonnet(self):
         result = estimate_cost(100, "claude-sonnet-4-5", use_calibrated=True)
-        # 100 * 4820 = 482000 input tokens -> 482000/1M * $3 = $1.446
-        # 100 * 1928 = 192800 output tokens -> 192800/1M * $15 = $2.892
-        assert result["input_tokens"] == 482000
-        assert result["output_tokens"] == 192800
-        assert result["cost_usd"] == pytest.approx(4.338, abs=0.001)
+        # input:  100 * 18569 = 1856900 -> /1M * $3.00  = $5.5707
+        # output: 100 * 666   = 66600   -> /1M * $15.00 = $0.9990
+        # write:  100 * 11251 = 1125100 -> /1M * $3.75  = $4.2191
+        # read:   100 * 67044 = 6704400 -> /1M * $0.30  = $2.0113
+        assert result["input_tokens"] == 1856900
+        assert result["output_tokens"] == 66600
+        assert result["cache_write_tokens"] == 1125100
+        assert result["cache_read_tokens"] == 6704400
+        assert result["cost_usd"] == pytest.approx(12.8001, abs=0.001)
 
     def test_override_tokens(self):
         result = estimate_cost(10, "claude-sonnet-4-5", avg_input=1000, avg_output=500)
@@ -105,12 +111,11 @@ class TestEstimateCost:
         assert result["input_tokens"] == 0
         assert result["output_tokens"] == 0
 
-    def test_cache_tokens_default_to_zero(self):
-        """Without cache overrides, cache tokens are 0 and cost is unchanged."""
-        result = estimate_cost(100, "claude-sonnet-4-5")
+    def test_cache_tokens_default_to_zero_without_calibration(self):
+        """Without calibration nor overrides, cache tokens default to 0."""
+        result = estimate_cost(100, "claude-sonnet-4-5", use_calibrated=False)
         assert result["cache_write_tokens"] == 0
         assert result["cache_read_tokens"] == 0
-        assert result["cost_usd"] == pytest.approx(4.338, abs=0.001)
 
     def test_cache_tokens_override(self):
         result = estimate_cost(
@@ -134,8 +139,9 @@ class TestEstimateCost:
         result = estimate_cost(
             100, "claude-sonnet-4-5", avg_cache_read=10000, use_calibrated=True
         )
-        assert result["input_tokens"] == 482000
-        assert result["output_tokens"] == 192800
-        assert result["cache_read_tokens"] == 1000000
-        # base 4.338 + 1M/1M * $0.30 = 4.638
-        assert result["cost_usd"] == pytest.approx(4.638, abs=0.001)
+        assert result["input_tokens"] == 1856900
+        assert result["output_tokens"] == 66600
+        assert result["cache_write_tokens"] == 1125100  # calibrated, not overridden
+        assert result["cache_read_tokens"] == 1000000  # overridden
+        # 5.5707 + 0.999 + 4.2191 + 1M/1M * $0.30 = 11.0888
+        assert result["cost_usd"] == pytest.approx(11.0888, abs=0.001)

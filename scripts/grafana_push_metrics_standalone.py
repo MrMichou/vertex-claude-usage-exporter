@@ -121,11 +121,11 @@ PRICING = {
     },
 }
 
-# Calibrated token averages per model (based on January 2026 GCP billing data)
-# cache_write/cache_read default to 0: no billing calibration for cache SKUs yet.
+# Calibrated from June 2026 GCP billing (Jun 1-10). Values absorb the account's
+# billed-vs-list factor (CAD + premium) so estimates match the invoice.
 MODEL_TOKEN_AVERAGES = {
-    # claude-fable-5: not billing-calibrated — Opus averages x1.3 (Fable 5
-    # tokenizer yields ~30% more tokens for the same content)
+    # claude-fable-5: not billing-calibrated (no billing SKU yet) — Opus
+    # averages x1.3 (Fable 5 tokenizer yields ~30% more tokens)
     "claude-fable-5": {
         "input": 11532,
         "output": 4612,
@@ -133,42 +133,43 @@ MODEL_TOKEN_AVERAGES = {
         "cache_read": 0,
     },
     "claude-opus-4-8": {
-        "input": 8871,
-        "output": 3548,
-        "cache_write": 0,
-        "cache_read": 0,
+        "input": 177,
+        "output": 464,
+        "cache_write": 4748,
+        "cache_read": 49795,
     },
+    # claude-opus-4-7 / 4-5: no billing lines — reuse the opus-4-6 calibration
     "claude-opus-4-7": {
-        "input": 8871,
-        "output": 3548,
-        "cache_write": 0,
-        "cache_read": 0,
+        "input": 563,
+        "output": 620,
+        "cache_write": 7274,
+        "cache_read": 108176,
     },
     "claude-opus-4-6": {
-        "input": 8871,
-        "output": 3548,
-        "cache_write": 0,
-        "cache_read": 0,
+        "input": 563,
+        "output": 620,
+        "cache_write": 7274,
+        "cache_read": 108176,
     },
     "claude-opus-4-5": {
-        "input": 8871,
-        "output": 3548,
-        "cache_write": 0,
-        "cache_read": 0,
+        "input": 563,
+        "output": 620,
+        "cache_write": 7274,
+        "cache_read": 108176,
     },
     "claude-opus-4": {"input": 8871, "output": 3548, "cache_write": 0, "cache_read": 0},
     "claude-3-opus": {"input": 8871, "output": 3548, "cache_write": 0, "cache_read": 0},
     "claude-sonnet-4-6": {
-        "input": 4820,
-        "output": 1928,
-        "cache_write": 0,
-        "cache_read": 0,
+        "input": 2032,
+        "output": 810,
+        "cache_write": 11440,
+        "cache_read": 99292,
     },
     "claude-sonnet-4-5": {
-        "input": 4820,
-        "output": 1928,
-        "cache_write": 0,
-        "cache_read": 0,
+        "input": 18569,
+        "output": 666,
+        "cache_write": 11251,
+        "cache_read": 67044,
     },
     "claude-sonnet-4": {
         "input": 3309,
@@ -183,10 +184,10 @@ MODEL_TOKEN_AVERAGES = {
         "cache_read": 0,
     },
     "claude-haiku-4-5": {
-        "input": 840,
-        "output": 336,
-        "cache_write": 0,
-        "cache_read": 0,
+        "input": 232,
+        "output": 363,
+        "cache_write": 3872,
+        "cache_read": 50086,
     },
     "claude-3-5-haiku": {
         "input": 382,
