@@ -40,12 +40,17 @@ Key implementation details:
 
 ## Pricing (per million tokens)
 
-| Model | Input | Output |
-|-------|-------|--------|
-| claude-3-5-haiku / claude-haiku-4-5 | $1.00 | $5.00 |
-| claude-sonnet-4 / claude-sonnet-4-5 | $3.00 | $15.00 |
-| claude-opus-4-5 / claude-opus-4-6 / claude-opus-4-7 / claude-opus-4-8 | $5.00 | $25.00 |
-| claude-opus-4 | $15.00 | $75.00 |
+| Model | Input | Output | Cache write (1.25x) | Cache read (0.1x) |
+|-------|-------|--------|---------------------|-------------------|
+| claude-3-5-haiku / claude-haiku-4-5 | $1.00 | $5.00 | $1.25 | $0.10 |
+| claude-sonnet-4 / claude-sonnet-4-5 / claude-sonnet-4-6 | $3.00 | $15.00 | $3.75 | $0.30 |
+| claude-opus-4-5 / claude-opus-4-6 / claude-opus-4-7 / claude-opus-4-8 | $5.00 | $25.00 | $6.25 | $0.50 |
+| claude-fable-5 | $10.00 | $50.00 | $12.50 | $1.00 |
+| claude-opus-4 | $15.00 | $75.00 | $18.75 | $1.50 |
+
+Prompt caching: calibrated cache token averages default to 0 (audit logs carry no
+token counts and billing calibration predates cache SKU breakdown). Override per
+run with `--avg-cache-write-tokens` / `--avg-cache-read-tokens`.
 
 ## Releases
 

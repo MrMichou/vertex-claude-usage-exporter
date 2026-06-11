@@ -41,6 +41,8 @@ def generate_report(usage: dict, target_date: datetime, output_file: str):
                 "requests": count,
                 "est_input_tokens": cost_info["input_tokens"],
                 "est_output_tokens": cost_info["output_tokens"],
+                "est_cache_write_tokens": cost_info["cache_write_tokens"],
+                "est_cache_read_tokens": cost_info["cache_read_tokens"],
                 "est_cost_usd": cost_info["cost_usd"],
             }
         )
@@ -60,6 +62,8 @@ def generate_report(usage: dict, target_date: datetime, output_file: str):
                 "requests",
                 "est_input_tokens",
                 "est_output_tokens",
+                "est_cache_write_tokens",
+                "est_cache_read_tokens",
                 "est_cost_usd",
             ],
         )
