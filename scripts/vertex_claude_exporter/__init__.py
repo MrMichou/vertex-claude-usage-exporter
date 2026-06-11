@@ -5,6 +5,8 @@ from vertex_claude_exporter.config import (
     MODEL_TOKEN_AVERAGES,
     DEFAULT_AVG_INPUT_TOKENS,
     DEFAULT_AVG_OUTPUT_TOKENS,
+    DEFAULT_AVG_CACHE_WRITE_TOKENS,
+    DEFAULT_AVG_CACHE_READ_TOKENS,
 )
 from vertex_claude_exporter.logs import build_filter, fetch_logs
 from vertex_claude_exporter.parser import (
@@ -23,6 +25,8 @@ __all__ = [
     "MODEL_TOKEN_AVERAGES",
     "DEFAULT_AVG_INPUT_TOKENS",
     "DEFAULT_AVG_OUTPUT_TOKENS",
+    "DEFAULT_AVG_CACHE_WRITE_TOKENS",
+    "DEFAULT_AVG_CACHE_READ_TOKENS",
     "build_filter",
     "fetch_logs",
     "extract_model_name",

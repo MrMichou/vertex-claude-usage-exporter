@@ -43,6 +43,18 @@ class TestGetPricingForModel:
         assert pricing["input"] == 0.00
         assert pricing["output"] == 0.00
 
+    def test_cache_rates(self):
+        pricing = get_pricing_for_model("claude-sonnet-4-6")
+        assert pricing["cache_write"] == 3.75
+        assert pricing["cache_read"] == 0.30
+
+    def test_fable_5(self):
+        pricing = get_pricing_for_model("claude-fable-5")
+        assert pricing["input"] == 10.00
+        assert pricing["output"] == 50.00
+        assert pricing["cache_write"] == 12.50
+        assert pricing["cache_read"] == 1.00
+
 
 class TestGetTokenAveragesForModel:
     def test_sonnet_calibrated(self):
@@ -92,3 +104,38 @@ class TestEstimateCost:
         assert result["cost_usd"] == 0
         assert result["input_tokens"] == 0
         assert result["output_tokens"] == 0
+
+    def test_cache_tokens_default_to_zero(self):
+        """Without cache overrides, cache tokens are 0 and cost is unchanged."""
+        result = estimate_cost(100, "claude-sonnet-4-5")
+        assert result["cache_write_tokens"] == 0
+        assert result["cache_read_tokens"] == 0
+        assert result["cost_usd"] == pytest.approx(4.338, abs=0.001)
+
+    def test_cache_tokens_override(self):
+        result = estimate_cost(
+            10,
+            "claude-sonnet-4-6",
+            avg_input=1000,
+            avg_output=500,
+            avg_cache_write=2000,
+            avg_cache_read=8000,
+        )
+        assert result["cache_write_tokens"] == 20000
+        assert result["cache_read_tokens"] == 80000
+        # input:  10000/1M * $3.00  = $0.03
+        # output:  5000/1M * $15.00 = $0.075
+        # write:  20000/1M * $3.75  = $0.075
+        # read:   80000/1M * $0.30  = $0.024
+        assert result["cost_usd"] == pytest.approx(0.204, abs=0.001)
+
+    def test_cache_override_with_calibrated_input_output(self):
+        """Cache overrides compose with calibrated input/output averages."""
+        result = estimate_cost(
+            100, "claude-sonnet-4-5", avg_cache_read=10000, use_calibrated=True
+        )
+        assert result["input_tokens"] == 482000
+        assert result["output_tokens"] == 192800
+        assert result["cache_read_tokens"] == 1000000
+        # base 4.338 + 1M/1M * $0.30 = 4.638
+        assert result["cost_usd"] == pytest.approx(4.638, abs=0.001)
