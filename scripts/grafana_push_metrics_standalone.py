@@ -27,43 +27,181 @@ logger = logging.getLogger(__name__)
 # Pricing per million tokens (January 2026)
 # NOTE: keep in sync with scripts/vertex_claude_exporter/config.py (source of truth).
 # This file is intentionally standalone (no package import) for drop-in k8s jobs.
+# Prompt caching: cache_write = 1.25x input (5-min TTL), cache_read = 0.1x input
 PRICING = {
-    "claude-opus-4-8": {"input": 5.00, "output": 25.00},
-    "claude-opus-4-7": {"input": 5.00, "output": 25.00},
-    "claude-opus-4-6": {"input": 5.00, "output": 25.00},
-    "claude-opus-4-5": {"input": 5.00, "output": 25.00},
-    "claude-opus-4": {"input": 15.00, "output": 75.00},
-    "claude-3-opus": {"input": 15.00, "output": 75.00},
-    "claude-sonnet-4-6": {"input": 3.00, "output": 15.00},
-    "claude-sonnet-4-5": {"input": 3.00, "output": 15.00},
-    "claude-sonnet-4": {"input": 3.00, "output": 15.00},
-    "claude-3-5-sonnet": {"input": 3.00, "output": 15.00},
-    "claude-haiku-4-5": {"input": 1.00, "output": 5.00},
-    "claude-3-5-haiku": {"input": 1.00, "output": 5.00},
-    "count-tokens": {"input": 0.00, "output": 0.00},
-    "default": {"input": 3.00, "output": 15.00},
+    "claude-fable-5": {
+        "input": 10.00,
+        "output": 50.00,
+        "cache_write": 12.50,
+        "cache_read": 1.00,
+    },
+    "claude-opus-4-8": {
+        "input": 5.00,
+        "output": 25.00,
+        "cache_write": 6.25,
+        "cache_read": 0.50,
+    },
+    "claude-opus-4-7": {
+        "input": 5.00,
+        "output": 25.00,
+        "cache_write": 6.25,
+        "cache_read": 0.50,
+    },
+    "claude-opus-4-6": {
+        "input": 5.00,
+        "output": 25.00,
+        "cache_write": 6.25,
+        "cache_read": 0.50,
+    },
+    "claude-opus-4-5": {
+        "input": 5.00,
+        "output": 25.00,
+        "cache_write": 6.25,
+        "cache_read": 0.50,
+    },
+    "claude-opus-4": {
+        "input": 15.00,
+        "output": 75.00,
+        "cache_write": 18.75,
+        "cache_read": 1.50,
+    },
+    "claude-3-opus": {
+        "input": 15.00,
+        "output": 75.00,
+        "cache_write": 18.75,
+        "cache_read": 1.50,
+    },
+    "claude-sonnet-4-6": {
+        "input": 3.00,
+        "output": 15.00,
+        "cache_write": 3.75,
+        "cache_read": 0.30,
+    },
+    "claude-sonnet-4-5": {
+        "input": 3.00,
+        "output": 15.00,
+        "cache_write": 3.75,
+        "cache_read": 0.30,
+    },
+    "claude-sonnet-4": {
+        "input": 3.00,
+        "output": 15.00,
+        "cache_write": 3.75,
+        "cache_read": 0.30,
+    },
+    "claude-3-5-sonnet": {
+        "input": 3.00,
+        "output": 15.00,
+        "cache_write": 3.75,
+        "cache_read": 0.30,
+    },
+    "claude-haiku-4-5": {
+        "input": 1.00,
+        "output": 5.00,
+        "cache_write": 1.25,
+        "cache_read": 0.10,
+    },
+    "claude-3-5-haiku": {
+        "input": 1.00,
+        "output": 5.00,
+        "cache_write": 1.25,
+        "cache_read": 0.10,
+    },
+    "count-tokens": {
+        "input": 0.00,
+        "output": 0.00,
+        "cache_write": 0.00,
+        "cache_read": 0.00,
+    },
+    "default": {
+        "input": 3.00,
+        "output": 15.00,
+        "cache_write": 3.75,
+        "cache_read": 0.30,
+    },
 }
 
 # Calibrated token averages per model (based on January 2026 GCP billing data)
+# cache_write/cache_read default to 0: no billing calibration for cache SKUs yet.
 MODEL_TOKEN_AVERAGES = {
-    "claude-opus-4-8": {"input": 8871, "output": 3548},
-    "claude-opus-4-7": {"input": 8871, "output": 3548},
-    "claude-opus-4-6": {"input": 8871, "output": 3548},
-    "claude-opus-4-5": {"input": 8871, "output": 3548},
-    "claude-opus-4": {"input": 8871, "output": 3548},
-    "claude-3-opus": {"input": 8871, "output": 3548},
-    "claude-sonnet-4-6": {"input": 4820, "output": 1928},
-    "claude-sonnet-4-5": {"input": 4820, "output": 1928},
-    "claude-sonnet-4": {"input": 3309, "output": 1323},
-    "claude-3-5-sonnet": {"input": 3309, "output": 1323},
-    "claude-haiku-4-5": {"input": 840, "output": 336},
-    "claude-3-5-haiku": {"input": 382, "output": 153},
-    "count-tokens": {"input": 0, "output": 0},
-    "default": {"input": 3000, "output": 1200},
+    # claude-fable-5: not billing-calibrated — Opus averages x1.3 (Fable 5
+    # tokenizer yields ~30% more tokens for the same content)
+    "claude-fable-5": {
+        "input": 11532,
+        "output": 4612,
+        "cache_write": 0,
+        "cache_read": 0,
+    },
+    "claude-opus-4-8": {
+        "input": 8871,
+        "output": 3548,
+        "cache_write": 0,
+        "cache_read": 0,
+    },
+    "claude-opus-4-7": {
+        "input": 8871,
+        "output": 3548,
+        "cache_write": 0,
+        "cache_read": 0,
+    },
+    "claude-opus-4-6": {
+        "input": 8871,
+        "output": 3548,
+        "cache_write": 0,
+        "cache_read": 0,
+    },
+    "claude-opus-4-5": {
+        "input": 8871,
+        "output": 3548,
+        "cache_write": 0,
+        "cache_read": 0,
+    },
+    "claude-opus-4": {"input": 8871, "output": 3548, "cache_write": 0, "cache_read": 0},
+    "claude-3-opus": {"input": 8871, "output": 3548, "cache_write": 0, "cache_read": 0},
+    "claude-sonnet-4-6": {
+        "input": 4820,
+        "output": 1928,
+        "cache_write": 0,
+        "cache_read": 0,
+    },
+    "claude-sonnet-4-5": {
+        "input": 4820,
+        "output": 1928,
+        "cache_write": 0,
+        "cache_read": 0,
+    },
+    "claude-sonnet-4": {
+        "input": 3309,
+        "output": 1323,
+        "cache_write": 0,
+        "cache_read": 0,
+    },
+    "claude-3-5-sonnet": {
+        "input": 3309,
+        "output": 1323,
+        "cache_write": 0,
+        "cache_read": 0,
+    },
+    "claude-haiku-4-5": {
+        "input": 840,
+        "output": 336,
+        "cache_write": 0,
+        "cache_read": 0,
+    },
+    "claude-3-5-haiku": {
+        "input": 382,
+        "output": 153,
+        "cache_write": 0,
+        "cache_read": 0,
+    },
+    "count-tokens": {"input": 0, "output": 0, "cache_write": 0, "cache_read": 0},
+    "default": {"input": 3000, "output": 1200, "cache_write": 0, "cache_read": 0},
 }
 
 DEFAULT_AVG_INPUT_TOKENS = 3000
 DEFAULT_AVG_OUTPUT_TOKENS = 1200
+DEFAULT_AVG_CACHE_WRITE_TOKENS = 0
+DEFAULT_AVG_CACHE_READ_TOKENS = 0
 
 # Transient error types for retry logic
 _TRANSIENT_ERRORS = (
@@ -205,6 +343,8 @@ def estimate_cost(
     avg_input: int = None,
     avg_output: int = None,
     use_calibrated: bool = True,
+    avg_cache_write: int = None,
+    avg_cache_read: int = None,
 ) -> dict:
     pricing = get_pricing_for_model(model_name)
 
@@ -213,20 +353,36 @@ def estimate_cost(
         model_avgs = get_token_averages_for_model(model_name)
         avg_input = model_avgs["input"]
         avg_output = model_avgs["output"]
+        if avg_cache_write is None:
+            avg_cache_write = model_avgs["cache_write"]
+        if avg_cache_read is None:
+            avg_cache_read = model_avgs["cache_read"]
     else:
         if avg_input is None:
             avg_input = DEFAULT_AVG_INPUT_TOKENS
         if avg_output is None:
             avg_output = DEFAULT_AVG_OUTPUT_TOKENS
+        if avg_cache_write is None:
+            avg_cache_write = DEFAULT_AVG_CACHE_WRITE_TOKENS
+        if avg_cache_read is None:
+            avg_cache_read = DEFAULT_AVG_CACHE_READ_TOKENS
 
     est_input = request_count * avg_input
     est_output = request_count * avg_output
+    est_cache_write = request_count * avg_cache_write
+    est_cache_read = request_count * avg_cache_read
     input_cost = (est_input / 1_000_000) * pricing["input"]
     output_cost = (est_output / 1_000_000) * pricing["output"]
+    cache_write_cost = (est_cache_write / 1_000_000) * pricing["cache_write"]
+    cache_read_cost = (est_cache_read / 1_000_000) * pricing["cache_read"]
     return {
         "input_tokens": est_input,
         "output_tokens": est_output,
-        "cost_usd": round(input_cost + output_cost, 4),
+        "cache_write_tokens": est_cache_write,
+        "cache_read_tokens": est_cache_read,
+        "cost_usd": round(
+            input_cost + output_cost + cache_write_cost + cache_read_cost, 4
+        ),
     }
 
 
@@ -237,12 +393,21 @@ def generate_prometheus_metrics(
     avg_input: int,
     avg_output: int,
     use_calibrated: bool = True,
+    avg_cache_write: int = None,
+    avg_cache_read: int = None,
 ) -> str:
     """Generate Prometheus text format metrics."""
     lines = []
     date_str = target_date.strftime("%Y-%m-%d")
     model_totals = defaultdict(
-        lambda: {"requests": 0, "cost": 0.0, "input_tokens": 0, "output_tokens": 0}
+        lambda: {
+            "requests": 0,
+            "cost": 0.0,
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "cache_write_tokens": 0,
+            "cache_read_tokens": 0,
+        }
     )
     unique_users = set()
 
@@ -266,9 +431,25 @@ def generate_prometheus_metrics(
     lines.append("# TYPE claude_vertex_estimated_input_tokens gauge")
     lines.append("# HELP claude_vertex_estimated_output_tokens Estimated output tokens")
     lines.append("# TYPE claude_vertex_estimated_output_tokens gauge")
+    lines.append(
+        "# HELP claude_vertex_estimated_cache_write_tokens Estimated prompt cache write tokens"
+    )
+    lines.append("# TYPE claude_vertex_estimated_cache_write_tokens gauge")
+    lines.append(
+        "# HELP claude_vertex_estimated_cache_read_tokens Estimated prompt cache read tokens"
+    )
+    lines.append("# TYPE claude_vertex_estimated_cache_read_tokens gauge")
     for (email, model), count in usage.items():
         sanitized_email = email.replace("@", "_at_").replace(".", "_")
-        cost_info = estimate_cost(count, model, avg_input, avg_output, use_calibrated)
+        cost_info = estimate_cost(
+            count,
+            model,
+            avg_input,
+            avg_output,
+            use_calibrated,
+            avg_cache_write,
+            avg_cache_read,
+        )
         labels = f'user="{sanitized_email}",model="{model}",date="{date_str}",project="{project_id}"'
         lines.append(
             f"claude_vertex_estimated_cost_usd{{{labels}}} {cost_info['cost_usd']}"
@@ -279,9 +460,17 @@ def generate_prometheus_metrics(
         lines.append(
             f"claude_vertex_estimated_output_tokens{{{labels}}} {cost_info['output_tokens']}"
         )
+        lines.append(
+            f"claude_vertex_estimated_cache_write_tokens{{{labels}}} {cost_info['cache_write_tokens']}"
+        )
+        lines.append(
+            f"claude_vertex_estimated_cache_read_tokens{{{labels}}} {cost_info['cache_read_tokens']}"
+        )
         model_totals[model]["cost"] += cost_info["cost_usd"]
         model_totals[model]["input_tokens"] += cost_info["input_tokens"]
         model_totals[model]["output_tokens"] += cost_info["output_tokens"]
+        model_totals[model]["cache_write_tokens"] += cost_info["cache_write_tokens"]
+        model_totals[model]["cache_read_tokens"] += cost_info["cache_read_tokens"]
 
     # Aggregated metrics
     lines.append("# HELP claude_vertex_total_requests Total requests per model")
@@ -314,6 +503,24 @@ def generate_prometheus_metrics(
     for model, totals in model_totals.items():
         lines.append(
             f'claude_vertex_total_output_tokens{{model="{model}",date="{date_str}",project="{project_id}"}} {totals["output_tokens"]}'
+        )
+
+    lines.append(
+        "# HELP claude_vertex_total_cache_write_tokens Total estimated prompt cache write tokens per model"
+    )
+    lines.append("# TYPE claude_vertex_total_cache_write_tokens gauge")
+    for model, totals in model_totals.items():
+        lines.append(
+            f'claude_vertex_total_cache_write_tokens{{model="{model}",date="{date_str}",project="{project_id}"}} {totals["cache_write_tokens"]}'
+        )
+
+    lines.append(
+        "# HELP claude_vertex_total_cache_read_tokens Total estimated prompt cache read tokens per model"
+    )
+    lines.append("# TYPE claude_vertex_total_cache_read_tokens gauge")
+    for model, totals in model_totals.items():
+        lines.append(
+            f'claude_vertex_total_cache_read_tokens{{model="{model}",date="{date_str}",project="{project_id}"}} {totals["cache_read_tokens"]}'
         )
 
     lines.append("# HELP claude_vertex_unique_users Number of unique users")
@@ -373,6 +580,18 @@ def main():
         help="Override average output tokens per request (disables per-model calibration)",
     )
     parser.add_argument(
+        "--avg-cache-write-tokens",
+        type=int,
+        default=None,
+        help="Average prompt cache write tokens per request (default: 0)",
+    )
+    parser.add_argument(
+        "--avg-cache-read-tokens",
+        type=int,
+        default=None,
+        help="Average prompt cache read tokens per request (default: 0)",
+    )
+    parser.add_argument(
         "--no-calibrated",
         action="store_true",
         help="Disable calibrated per-model token averages, use defaults instead",
@@ -409,6 +628,16 @@ def main():
         sys.exit(1)
     if args.avg_output_tokens is not None and args.avg_output_tokens <= 0:
         logger.error("--avg-output-tokens must be > 0, got %d", args.avg_output_tokens)
+        sys.exit(1)
+    if args.avg_cache_write_tokens is not None and args.avg_cache_write_tokens < 0:
+        logger.error(
+            "--avg-cache-write-tokens must be >= 0, got %d", args.avg_cache_write_tokens
+        )
+        sys.exit(1)
+    if args.avg_cache_read_tokens is not None and args.avg_cache_read_tokens < 0:
+        logger.error(
+            "--avg-cache-read-tokens must be >= 0, got %d", args.avg_cache_read_tokens
+        )
         sys.exit(1)
 
     # Strip http(s):// prefix from pushgateway URL if present
@@ -460,6 +689,8 @@ def main():
         args.avg_input_tokens,
         args.avg_output_tokens,
         use_calibrated,
+        args.avg_cache_write_tokens,
+        args.avg_cache_read_tokens,
     )
 
     if args.dry_run:

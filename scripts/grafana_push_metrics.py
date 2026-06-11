@@ -33,6 +33,8 @@ def push_metrics_to_gateway(
     avg_input: int = None,
     avg_output: int = None,
     use_calibrated: bool = True,
+    avg_cache_write: int = None,
+    avg_cache_read: int = None,
 ):
     """Push metrics to Prometheus Pushgateway."""
 
@@ -61,6 +63,18 @@ def push_metrics_to_gateway(
     output_tokens_gauge = Gauge(
         "claude_vertex_estimated_output_tokens",
         "Estimated output tokens for Claude API usage",
+        ["user", "model", "date", "project"],
+        registry=registry,
+    )
+    cache_write_tokens_gauge = Gauge(
+        "claude_vertex_estimated_cache_write_tokens",
+        "Estimated prompt cache write tokens for Claude API usage",
+        ["user", "model", "date", "project"],
+        registry=registry,
+    )
+    cache_read_tokens_gauge = Gauge(
+        "claude_vertex_estimated_cache_read_tokens",
+        "Estimated prompt cache read tokens for Claude API usage",
         ["user", "model", "date", "project"],
         registry=registry,
     )
@@ -96,15 +110,42 @@ def push_metrics_to_gateway(
         ["model", "date", "project"],
         registry=registry,
     )
+    total_cache_write_tokens_gauge = Gauge(
+        "claude_vertex_total_cache_write_tokens",
+        "Total estimated prompt cache write tokens across all users",
+        ["model", "date", "project"],
+        registry=registry,
+    )
+    total_cache_read_tokens_gauge = Gauge(
+        "claude_vertex_total_cache_read_tokens",
+        "Total estimated prompt cache read tokens across all users",
+        ["model", "date", "project"],
+        registry=registry,
+    )
 
     # Populate per-user metrics
     model_totals = defaultdict(
-        lambda: {"requests": 0, "cost": 0.0, "input_tokens": 0, "output_tokens": 0}
+        lambda: {
+            "requests": 0,
+            "cost": 0.0,
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "cache_write_tokens": 0,
+            "cache_read_tokens": 0,
+        }
     )
     unique_users = set()
 
     for (email, model), count in usage.items():
-        cost_info = estimate_cost(count, model, avg_input, avg_output, use_calibrated)
+        cost_info = estimate_cost(
+            count,
+            model,
+            avg_input,
+            avg_output,
+            use_calibrated,
+            avg_cache_write,
+            avg_cache_read,
+        )
         sanitized_email = email.replace("@", "_at_").replace(".", "_")
 
         labels = dict(
@@ -114,11 +155,15 @@ def push_metrics_to_gateway(
         cost_gauge.labels(**labels).set(cost_info["cost_usd"])
         input_tokens_gauge.labels(**labels).set(cost_info["input_tokens"])
         output_tokens_gauge.labels(**labels).set(cost_info["output_tokens"])
+        cache_write_tokens_gauge.labels(**labels).set(cost_info["cache_write_tokens"])
+        cache_read_tokens_gauge.labels(**labels).set(cost_info["cache_read_tokens"])
 
         model_totals[model]["requests"] += count
         model_totals[model]["cost"] += cost_info["cost_usd"]
         model_totals[model]["input_tokens"] += cost_info["input_tokens"]
         model_totals[model]["output_tokens"] += cost_info["output_tokens"]
+        model_totals[model]["cache_write_tokens"] += cost_info["cache_write_tokens"]
+        model_totals[model]["cache_read_tokens"] += cost_info["cache_read_tokens"]
         unique_users.add(email)
 
     # Populate aggregated metrics
@@ -128,6 +173,12 @@ def push_metrics_to_gateway(
         total_cost_gauge.labels(**agg_labels).set(totals["cost"])
         total_input_tokens_gauge.labels(**agg_labels).set(totals["input_tokens"])
         total_output_tokens_gauge.labels(**agg_labels).set(totals["output_tokens"])
+        total_cache_write_tokens_gauge.labels(**agg_labels).set(
+            totals["cache_write_tokens"]
+        )
+        total_cache_read_tokens_gauge.labels(**agg_labels).set(
+            totals["cache_read_tokens"]
+        )
 
     total_users_gauge.labels(date=date_str, project=project_id).set(len(unique_users))
 
@@ -177,6 +228,18 @@ def main():
         help="Override average output tokens per request (disables per-model calibration)",
     )
     parser.add_argument(
+        "--avg-cache-write-tokens",
+        type=int,
+        default=None,
+        help="Average prompt cache write tokens per request (default: 0)",
+    )
+    parser.add_argument(
+        "--avg-cache-read-tokens",
+        type=int,
+        default=None,
+        help="Average prompt cache read tokens per request (default: 0)",
+    )
+    parser.add_argument(
         "--no-calibrated",
         action="store_true",
         help="Disable calibrated per-model token averages, use defaults instead",
@@ -215,6 +278,16 @@ def main():
         sys.exit(1)
     if args.avg_output_tokens is not None and args.avg_output_tokens <= 0:
         logger.error("--avg-output-tokens must be > 0, got %d", args.avg_output_tokens)
+        sys.exit(1)
+    if args.avg_cache_write_tokens is not None and args.avg_cache_write_tokens < 0:
+        logger.error(
+            "--avg-cache-write-tokens must be >= 0, got %d", args.avg_cache_write_tokens
+        )
+        sys.exit(1)
+    if args.avg_cache_read_tokens is not None and args.avg_cache_read_tokens < 0:
+        logger.error(
+            "--avg-cache-read-tokens must be >= 0, got %d", args.avg_cache_read_tokens
+        )
         sys.exit(1)
 
     # Strip http(s):// prefix from pushgateway URL if present
@@ -277,6 +350,8 @@ def main():
                 args.avg_input_tokens,
                 args.avg_output_tokens,
                 use_calibrated,
+                args.avg_cache_write_tokens,
+                args.avg_cache_read_tokens,
             )
             total_cost += cost_info["cost_usd"]
             logger.info(
@@ -299,6 +374,8 @@ def main():
                 avg_input=args.avg_input_tokens,
                 avg_output=args.avg_output_tokens,
                 use_calibrated=use_calibrated,
+                avg_cache_write=args.avg_cache_write_tokens,
+                avg_cache_read=args.avg_cache_read_tokens,
             )
 
             logger.info("Metrics pushed successfully to %s", pushgateway_url)
