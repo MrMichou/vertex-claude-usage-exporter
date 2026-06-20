@@ -3,6 +3,7 @@
 import logging
 import re
 from collections import defaultdict
+from datetime import datetime, timezone
 
 logger = logging.getLogger(__name__)
 
@@ -15,8 +16,25 @@ def extract_model_name(resource_name: str) -> str:
     return "unknown"
 
 
+def extract_hour(api_repr: dict) -> str:
+    """Extract the UTC hour ("00".."23") from a log entry's timestamp.
+
+    Returns "unknown" when no parseable timestamp is present.
+    """
+    ts = api_repr.get("timestamp") or api_repr.get("receiveTimestamp")
+    if not ts:
+        return "unknown"
+    try:
+        dt = datetime.fromisoformat(str(ts).replace("Z", "+00:00"))
+    except ValueError:
+        return "unknown"
+    if dt.tzinfo is not None:
+        dt = dt.astimezone(timezone.utc)
+    return f"{dt.hour:02d}"
+
+
 def parse_entry(entry) -> dict:
-    """Parse a Cloud Logging entry and extract user email and model.
+    """Parse a Cloud Logging entry and extract user email, model and UTC hour.
 
     Returns None for non-Claude entries or streaming duplicates.
     """
@@ -44,7 +62,7 @@ def parse_entry(entry) -> dict:
         if model == "count-tokens":
             return None
 
-        return {"email": email, "model": model}
+        return {"email": email, "model": model, "hour": extract_hour(api_repr)}
     except Exception as e:
         logger.debug("Failed to parse log entry: %s", e)
         return None
@@ -62,6 +80,36 @@ def aggregate_usage(entries: list) -> dict:
         parsed = parse_entry(entry)
         if parsed:
             key = (parsed["email"], parsed["model"])
+            usage[key] += 1
+        else:
+            skipped += 1
+
+    if skipped:
+        logger.info(
+            "Skipped %d non-Claude/unparseable entries out of %d total",
+            skipped,
+            len(entries),
+        )
+
+    return dict(usage)
+
+
+def aggregate_usage_by_hour(entries: list) -> dict:
+    """Aggregate usage by (model, hour) for intra-day "live" metrics.
+
+    Hour is the zero-padded UTC hour ("00".."23"). Reuses parse_entry so the
+    same streaming-dedup and Claude-only filtering rules apply. Aggregated at
+    model+hour granularity only (no per-user dimension) to keep cardinality low.
+
+    Returns: {(model, hour): count}
+    """
+    usage = defaultdict(int)
+    skipped = 0
+
+    for entry in entries:
+        parsed = parse_entry(entry)
+        if parsed:
+            key = (parsed["model"], parsed["hour"])
             usage[key] += 1
         else:
             skipped += 1

@@ -4,6 +4,8 @@ from unittest.mock import MagicMock
 
 from vertex_claude_exporter.parser import (
     aggregate_usage,
+    aggregate_usage_by_hour,
+    extract_hour,
     extract_model_name,
     parse_entry,
 )
@@ -41,7 +43,9 @@ class TestExtractModelName:
         assert extract_model_name("") == "unknown"
 
 
-def _make_entry(resource_name, email="user@example.com", operation=None):
+def _make_entry(
+    resource_name, email="user@example.com", operation=None, timestamp=None
+):
     """Helper to create a mock log entry."""
     api_repr = {
         "protoPayload": {
@@ -51,6 +55,8 @@ def _make_entry(resource_name, email="user@example.com", operation=None):
     }
     if operation is not None:
         api_repr["operation"] = operation
+    if timestamp is not None:
+        api_repr["timestamp"] = timestamp
     entry = MagicMock()
     entry.to_api_repr.return_value = api_repr
     return entry
@@ -61,9 +67,20 @@ class TestParseEntry:
         entry = _make_entry(
             "projects/p/locations/l/publishers/anthropic/models/claude-sonnet-4-5",
             email="alice@example.com",
+            timestamp="2026-06-20T14:35:12.123Z",
         )
         result = parse_entry(entry)
-        assert result == {"email": "alice@example.com", "model": "claude-sonnet-4-5"}
+        assert result == {
+            "email": "alice@example.com",
+            "model": "claude-sonnet-4-5",
+            "hour": "14",
+        }
+
+    def test_missing_timestamp_yields_unknown_hour(self):
+        entry = _make_entry(
+            "projects/p/locations/l/publishers/anthropic/models/claude-sonnet-4-5",
+        )
+        assert parse_entry(entry)["hour"] == "unknown"
 
     def test_non_claude_model_returns_none(self):
         entry = _make_entry(
@@ -141,3 +158,90 @@ class TestAggregateUsage:
 
     def test_empty_entries(self):
         assert aggregate_usage([]) == {}
+
+
+class TestExtractHour:
+    def test_utc_timestamp_zero_padded(self):
+        assert extract_hour({"timestamp": "2026-06-20T09:05:00Z"}) == "09"
+
+    def test_afternoon_hour(self):
+        assert extract_hour({"timestamp": "2026-06-20T23:59:59.999Z"}) == "23"
+
+    def test_offset_timestamp_converted_to_utc(self):
+        # 01:30 at +02:00 is 23:30 UTC the previous day
+        assert extract_hour({"timestamp": "2026-06-20T01:30:00+02:00"}) == "23"
+
+    def test_falls_back_to_receive_timestamp(self):
+        assert extract_hour({"receiveTimestamp": "2026-06-20T07:00:00Z"}) == "07"
+
+    def test_missing_timestamp(self):
+        assert extract_hour({}) == "unknown"
+
+    def test_unparseable_timestamp(self):
+        assert extract_hour({"timestamp": "not-a-date"}) == "unknown"
+
+
+class TestAggregateUsageByHour:
+    def test_buckets_by_model_and_hour(self):
+        entries = [
+            _make_entry(
+                "projects/p/locations/l/publishers/anthropic/models/claude-sonnet-4",
+                timestamp="2026-06-20T09:10:00Z",
+            ),
+            _make_entry(
+                "projects/p/locations/l/publishers/anthropic/models/claude-sonnet-4",
+                timestamp="2026-06-20T09:45:00Z",
+            ),
+            _make_entry(
+                "projects/p/locations/l/publishers/anthropic/models/claude-sonnet-4",
+                timestamp="2026-06-20T10:05:00Z",
+            ),
+            _make_entry(
+                "projects/p/locations/l/publishers/anthropic/models/claude-haiku-4-5",
+                timestamp="2026-06-20T09:30:00Z",
+            ),
+        ]
+        usage = aggregate_usage_by_hour(entries)
+        assert usage == {
+            ("claude-sonnet-4", "09"): 2,
+            ("claude-sonnet-4", "10"): 1,
+            ("claude-haiku-4-5", "09"): 1,
+        }
+
+    def test_ignores_user_dimension(self):
+        entries = [
+            _make_entry(
+                "projects/p/locations/l/publishers/anthropic/models/claude-sonnet-4",
+                email="alice@ex.com",
+                timestamp="2026-06-20T09:10:00Z",
+            ),
+            _make_entry(
+                "projects/p/locations/l/publishers/anthropic/models/claude-sonnet-4",
+                email="bob@ex.com",
+                timestamp="2026-06-20T09:55:00Z",
+            ),
+        ]
+        usage = aggregate_usage_by_hour(entries)
+        assert usage == {("claude-sonnet-4", "09"): 2}
+
+    def test_skips_non_claude(self):
+        entries = [
+            _make_entry(
+                "projects/p/locations/l/publishers/google/models/gemini-pro",
+                timestamp="2026-06-20T09:10:00Z",
+            ),
+        ]
+        assert aggregate_usage_by_hour(entries) == {}
+
+    def test_streaming_dedup_applies(self):
+        entries = [
+            _make_entry(
+                "projects/p/locations/l/publishers/anthropic/models/claude-sonnet-4",
+                operation={"last": True},
+                timestamp="2026-06-20T09:10:00Z",
+            ),
+        ]
+        assert aggregate_usage_by_hour(entries) == {}
+
+    def test_empty_entries(self):
+        assert aggregate_usage_by_hour([]) == {}

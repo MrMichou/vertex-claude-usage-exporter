@@ -11,8 +11,10 @@ from vertex_claude_exporter.config import (
 from vertex_claude_exporter.logs import build_filter, fetch_logs
 from vertex_claude_exporter.parser import (
     extract_model_name,
+    extract_hour,
     parse_entry,
     aggregate_usage,
+    aggregate_usage_by_hour,
 )
 from vertex_claude_exporter.cost import (
     get_pricing_for_model,
@@ -30,8 +32,10 @@ __all__ = [
     "build_filter",
     "fetch_logs",
     "extract_model_name",
+    "extract_hour",
     "parse_entry",
     "aggregate_usage",
+    "aggregate_usage_by_hour",
     "get_pricing_for_model",
     "get_token_averages_for_model",
     "estimate_cost",

@@ -7,8 +7,8 @@ Python scripts to generate usage reports of Claude/Anthropic models on GCP Verte
 ## Project Structure
 
 - `scripts/` - Python scripts: `claude_usage_report.py`, `claude_usage_with_cost.py`, `grafana_push_metrics.py`, `grafana_push_metrics_standalone.py`
-- `dashboards/` - Grafana dashboard JSON files
-- `k8s/` - Kubernetes manifests (pushgateway, cronjob, servicemonitor)
+- `dashboards/` - Grafana dashboard JSON files (incl. `grafana_dashboard_live.json` for intra-day/live)
+- `k8s/` - Kubernetes manifests (pushgateway, cronjob, live cronjob, servicemonitor)
 - `helm/vertex-claude-usage-exporter/` - Helm chart (version in `Chart.yaml` must match release tags)
 - `.github/workflows/` - CI (`ci.yml`: ruff, pytest, helm-lint, docker build) and Release (`release.yml`: multi-arch Docker, Helm OCI, GitHub Release)
 - `.github/release.yml` - Release notes categorization by PR labels
@@ -36,7 +36,21 @@ Key implementation details:
 - Model matching: `sorted(keys, key=len, reverse=True)` for longest-key-first
 - Streaming dedup: skip entries where `operation.last=True` and `operation.first` absent
 - `estimate_cost()` uses independent `if` blocks (not `elif`) for default fallback
-- Calibrated per-model token averages from Jan 2026 billing (override with `--no-calibrated`)
+- Calibrated per-model token averages from Jun 2026 billing, incl. cache tokens (override with `--no-calibrated`)
+
+## Live (intra-day) metrics
+
+Two layers, kept strictly separate (distinct metric names + Pushgateway jobs):
+- **Daily batch** (`claude_vertex_*`, labels `user/model/date/project`): nightly CronJob
+  `claude-metrics-pusher` (02:00 UTC), re-pushes the trailing 3 days. Canonical source.
+- **Live** (`claude_vertex_live_*`, labels `model/hour/date/project`): hourly CronJob
+  `claude-metrics-pusher-live` (`k8s/metrics-pusher-live-cronjob.yaml`) runs
+  `grafana_push_metrics.py --live --date <today>`. Each run re-queries the current day
+  (00:00 UTC → now via the same `build_filter`), buckets by hour
+  (`aggregate_usage_by_hour`, model+hour only, no `user`), and re-pushes every
+  hour-so-far under the fixed job `claude_vertex_live` — idempotent, self-healing, rotates
+  to the new day on the first post-midnight run. Dashboard: `dashboards/grafana_dashboard_live.json`
+  (refresh 1m, bar charts by hour, no `$date` variable).
 
 ## Pricing (per million tokens)
 
@@ -48,9 +62,10 @@ Key implementation details:
 | claude-fable-5 | $10.00 | $50.00 | $12.50 | $1.00 |
 | claude-opus-4 | $15.00 | $75.00 | $18.75 | $1.50 |
 
-Prompt caching: calibrated cache token averages default to 0 (audit logs carry no
-token counts and billing calibration predates cache SKU breakdown). Override per
-run with `--avg-cache-write-tokens` / `--avg-cache-read-tokens`.
+Prompt caching: cache token averages calibrated from June 2026 billing (cache SKU
+breakdown). Calibrated averages absorb the account's billed-vs-list factor (CAD +
+premium) so estimates match the invoice. Override per run with
+`--avg-cache-write-tokens` / `--avg-cache-read-tokens`.
 
 ## Releases
 

@@ -24,6 +24,19 @@
   "liveNow": false,
   "panels": [
     {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 101,
+      "panels": [],
+      "title": "Overview",
+      "type": "row"
+    },
+    {
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
@@ -51,7 +64,7 @@
         "h": 4,
         "w": 6,
         "x": 0,
-        "y": 0
+        "y": 1
       },
       "id": 1,
       "options": {
@@ -60,7 +73,9 @@
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": ["sum"],
+          "calcs": [
+            "sum"
+          ],
           "fields": "",
           "values": false
         },
@@ -119,7 +134,7 @@
         "h": 4,
         "w": 6,
         "x": 6,
-        "y": 0
+        "y": 1
       },
       "id": 2,
       "options": {
@@ -128,7 +143,9 @@
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": ["sum"],
+          "calcs": [
+            "sum"
+          ],
           "fields": "",
           "values": false
         },
@@ -179,7 +196,7 @@
         "h": 4,
         "w": 6,
         "x": 12,
-        "y": 0
+        "y": 1
       },
       "id": 3,
       "options": {
@@ -188,7 +205,9 @@
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": ["sum"],
+          "calcs": [
+            "sum"
+          ],
           "fields": "",
           "values": false
         },
@@ -239,7 +258,7 @@
         "h": 4,
         "w": 6,
         "x": 18,
-        "y": 0
+        "y": 1
       },
       "id": 4,
       "options": {
@@ -248,7 +267,9 @@
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": "",
           "values": false
         },
@@ -270,6 +291,19 @@
       ],
       "title": "Models Used",
       "type": "stat"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 5
+      },
+      "id": 102,
+      "panels": [],
+      "title": "By Model",
+      "type": "row"
     },
     {
       "datasource": {
@@ -335,7 +369,7 @@
         "h": 10,
         "w": 12,
         "x": 0,
-        "y": 4
+        "y": 6
       },
       "id": 5,
       "options": {
@@ -343,7 +377,9 @@
         "footer": {
           "countRows": false,
           "fields": "",
-          "reducer": ["sum"],
+          "reducer": [
+            "sum"
+          ],
           "show": true
         },
         "showHeader": true,
@@ -479,7 +515,7 @@
         "h": 10,
         "w": 12,
         "x": 12,
-        "y": 4
+        "y": 6
       },
       "id": 6,
       "options": {
@@ -487,7 +523,9 @@
         "footer": {
           "countRows": false,
           "fields": "",
-          "reducer": ["sum"],
+          "reducer": [
+            "sum"
+          ],
           "show": true
         },
         "showHeader": true,
@@ -579,22 +617,29 @@
       },
       "gridPos": {
         "h": 8,
-        "w": 8,
+        "w": 12,
         "x": 0,
-        "y": 14
+        "y": 16
       },
       "id": 7,
       "options": {
-        "displayLabels": ["name", "percent"],
+        "displayLabels": [
+          "name",
+          "percent"
+        ],
         "legend": {
           "displayMode": "table",
           "placement": "right",
           "showLegend": true,
-          "values": ["value"]
+          "values": [
+            "value"
+          ]
         },
         "pieType": "pie",
         "reduceOptions": {
-          "calcs": ["sum"],
+          "calcs": [
+            "sum"
+          ],
           "fields": "",
           "values": false
         },
@@ -645,22 +690,29 @@
       },
       "gridPos": {
         "h": 8,
-        "w": 8,
-        "x": 8,
-        "y": 14
+        "w": 12,
+        "x": 12,
+        "y": 16
       },
       "id": 8,
       "options": {
-        "displayLabels": ["name", "percent"],
+        "displayLabels": [
+          "name",
+          "percent"
+        ],
         "legend": {
           "displayMode": "table",
           "placement": "right",
           "showLegend": true,
-          "values": ["value"]
+          "values": [
+            "value"
+          ]
         },
         "pieType": "pie",
         "reduceOptions": {
-          "calcs": ["sum"],
+          "calcs": [
+            "sum"
+          ],
           "fields": "",
           "values": false
         },
@@ -684,6 +736,19 @@
       ],
       "title": "Cost Distribution by Model",
       "type": "piechart"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 24
+      },
+      "id": 103,
+      "panels": [],
+      "title": "By User",
+      "type": "row"
     },
     {
       "datasource": {
@@ -785,10 +850,10 @@
         ]
       },
       "gridPos": {
-        "h": 8,
-        "w": 8,
-        "x": 16,
-        "y": 14
+        "h": 9,
+        "w": 24,
+        "x": 0,
+        "y": 25
       },
       "id": 9,
       "options": {
@@ -796,7 +861,9 @@
         "footer": {
           "countRows": false,
           "fields": "",
-          "reducer": ["sum"],
+          "reducer": [
+            "sum"
+          ],
           "show": true
         },
         "showHeader": true,
@@ -926,7 +993,7 @@
         "h": 10,
         "w": 24,
         "x": 0,
-        "y": 22
+        "y": 34
       },
       "id": 10,
       "options": {
@@ -934,7 +1001,9 @@
         "footer": {
           "countRows": false,
           "fields": "",
-          "reducer": ["sum"],
+          "reducer": [
+            "sum"
+          ],
           "show": true
         },
         "showHeader": true,
@@ -999,142 +1068,18 @@
         }
       ],
       "type": "table"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
-      "description": "Requests per model - horizontal bar gauge",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          },
-          "unit": "short"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 6,
-        "w": 12,
-        "x": 0,
-        "y": 32
-      },
-      "id": 11,
-      "options": {
-        "displayMode": "gradient",
-        "maxVizHeight": 300,
-        "minVizHeight": 16,
-        "minVizWidth": 8,
-        "namePlacement": "auto",
-        "orientation": "horizontal",
-        "reduceOptions": {
-          "calcs": ["lastNotNull"],
-          "fields": "",
-          "values": false
-        },
-        "showUnfilled": true,
-        "sizing": "auto",
-        "text": {},
-        "valueMode": "text"
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "editorMode": "code",
-          "expr": "sum by (model) (claude_vertex_total_requests{project=~\"$project\", date=~\"$date\"})",
-          "legendFormat": "{{model}}",
-          "instant": true,
-          "refId": "A"
-        }
-      ],
-      "title": "Total Requests by Model",
-      "type": "bargauge"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
-      "description": "Cost per model - horizontal bar gauge",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          },
-          "unit": "currencyUSD"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 6,
-        "w": 12,
-        "x": 12,
-        "y": 32
-      },
-      "id": 12,
-      "options": {
-        "displayMode": "gradient",
-        "maxVizHeight": 300,
-        "minVizHeight": 16,
-        "minVizWidth": 8,
-        "namePlacement": "auto",
-        "orientation": "horizontal",
-        "reduceOptions": {
-          "calcs": ["lastNotNull"],
-          "fields": "",
-          "values": false
-        },
-        "showUnfilled": true,
-        "sizing": "auto",
-        "text": {},
-        "valueMode": "text"
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "editorMode": "code",
-          "expr": "sum by (model) (claude_vertex_total_cost_usd{project=~\"$project\", date=~\"$date\"})",
-          "legendFormat": "{{model}}",
-          "instant": true,
-          "refId": "A"
-        }
-      ],
-      "title": "Total Cost by Model",
-      "type": "bargauge"
     }
   ],
   "refresh": "5m",
   "schemaVersion": 38,
   "style": "dark",
-  "tags": ["claude", "vertex-ai", "gcp", "anthropic", "llm"],
+  "tags": [
+    "claude",
+    "vertex-ai",
+    "gcp",
+    "anthropic",
+    "llm"
+  ],
   "templating": {
     "list": [
       {
@@ -1208,6 +1153,6 @@
   "timezone": "",
   "title": "Claude Vertex AI Usage",
   "uid": "claude-vertex-usage",
-  "version": 4,
+  "version": 5,
   "weekStart": ""
 }

@@ -30,3 +30,6 @@ Thumbs.db
 # Tool artifacts
 .claude-flow/
 .hive-mind/
+
+# Serena MCP local cache
+.serena/

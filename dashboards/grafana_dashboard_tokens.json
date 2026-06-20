@@ -11,23 +11,48 @@
   "liveNow": false,
   "panels": [
     {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 101,
+      "panels": [],
+      "title": "Overview",
+      "type": "row"
+    },
+    {
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
       },
       "fieldConfig": {
         "defaults": {
-          "color": {"mode": "palette-classic"},
+          "color": {
+            "mode": "palette-classic"
+          },
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
-            "steps": [{"color": "blue", "value": null}]
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
           },
           "unit": "short"
         },
         "overrides": []
       },
-      "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 1
+      },
       "id": 1,
       "options": {
         "colorMode": "value",
@@ -35,7 +60,9 @@
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": ["sum"],
+          "calcs": [
+            "sum"
+          ],
           "fields": "",
           "values": false
         },
@@ -43,7 +70,10 @@
       },
       "targets": [
         {
-          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
           "expr": "sum(claude_vertex_estimated_input_tokens{project=~\"$project\", date=~\"$date\"})",
           "legendFormat": "Input",
           "instant": true,
@@ -60,17 +90,29 @@
       },
       "fieldConfig": {
         "defaults": {
-          "color": {"mode": "palette-classic"},
+          "color": {
+            "mode": "palette-classic"
+          },
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
-            "steps": [{"color": "orange", "value": null}]
+            "steps": [
+              {
+                "color": "orange",
+                "value": null
+              }
+            ]
           },
           "unit": "short"
         },
         "overrides": []
       },
-      "gridPos": {"h": 4, "w": 6, "x": 6, "y": 0},
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 6,
+        "y": 1
+      },
       "id": 2,
       "options": {
         "colorMode": "value",
@@ -78,7 +120,9 @@
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": ["sum"],
+          "calcs": [
+            "sum"
+          ],
           "fields": "",
           "values": false
         },
@@ -86,7 +130,10 @@
       },
       "targets": [
         {
-          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
           "expr": "sum(claude_vertex_estimated_output_tokens{project=~\"$project\", date=~\"$date\"})",
           "legendFormat": "Output",
           "instant": true,
@@ -103,17 +150,29 @@
       },
       "fieldConfig": {
         "defaults": {
-          "color": {"mode": "palette-classic"},
+          "color": {
+            "mode": "palette-classic"
+          },
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
-            "steps": [{"color": "green", "value": null}]
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
           },
           "unit": "short"
         },
         "overrides": []
       },
-      "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0},
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 12,
+        "y": 1
+      },
       "id": 3,
       "options": {
         "colorMode": "value",
@@ -121,7 +180,9 @@
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": ["sum"],
+          "calcs": [
+            "sum"
+          ],
           "fields": "",
           "values": false
         },
@@ -129,7 +190,10 @@
       },
       "targets": [
         {
-          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
           "expr": "sum(claude_vertex_estimated_input_tokens{project=~\"$project\", date=~\"$date\"}) + sum(claude_vertex_estimated_output_tokens{project=~\"$project\", date=~\"$date\"})",
           "legendFormat": "Total",
           "instant": true,
@@ -146,17 +210,29 @@
       },
       "fieldConfig": {
         "defaults": {
-          "color": {"mode": "palette-classic"},
+          "color": {
+            "mode": "palette-classic"
+          },
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
-            "steps": [{"color": "purple", "value": null}]
+            "steps": [
+              {
+                "color": "purple",
+                "value": null
+              }
+            ]
           },
           "unit": "short"
         },
         "overrides": []
       },
-      "gridPos": {"h": 4, "w": 6, "x": 18, "y": 0},
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 18,
+        "y": 1
+      },
       "id": 4,
       "options": {
         "colorMode": "value",
@@ -164,7 +240,9 @@
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": ["sum"],
+          "calcs": [
+            "sum"
+          ],
           "fields": "",
           "values": false
         },
@@ -172,7 +250,10 @@
       },
       "targets": [
         {
-          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
           "expr": "count(count by (user) (claude_vertex_estimated_input_tokens{project=~\"$project\", date=~\"$date\"}))",
           "legendFormat": "Users",
           "instant": true,
@@ -187,10 +268,206 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
+      "description": "Input tokens vs Output tokens per day",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "Tokens",
+            "axisPlacement": "auto",
+            "fillOpacity": 80,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineWidth": 1,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Input Tokens"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "blue",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Output Tokens"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "orange",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 5
+      },
+      "id": 7,
+      "options": {
+        "barRadius": 0.1,
+        "barWidth": 0.8,
+        "fullHighlight": false,
+        "groupWidth": 0.7,
+        "legend": {
+          "calcs": [
+            "sum"
+          ],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "orientation": "auto",
+        "showValue": "auto",
+        "stacking": "normal",
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "xTickLabelRotation": -45,
+        "xTickLabelSpacing": 0
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "sum by (date) (claude_vertex_estimated_input_tokens{project=~\"$project\", date=~\"$date\"})",
+          "format": "table",
+          "instant": true,
+          "legendFormat": "Input Tokens",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "sum by (date) (claude_vertex_estimated_output_tokens{project=~\"$project\", date=~\"$date\"})",
+          "format": "table",
+          "instant": true,
+          "legendFormat": "Output Tokens",
+          "refId": "B"
+        }
+      ],
+      "title": "Input vs Output Tokens per Day",
+      "transformations": [
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true
+            },
+            "indexByName": {
+              "date": 0,
+              "Value #A": 1,
+              "Value #B": 2
+            },
+            "renameByName": {
+              "Value #A": "Input Tokens",
+              "Value #B": "Output Tokens",
+              "date": "Date"
+            }
+          }
+        },
+        {
+          "id": "sortBy",
+          "options": {
+            "fields": {},
+            "sort": [
+              {
+                "field": "Date"
+              }
+            ]
+          }
+        },
+        {
+          "id": "convertFieldType",
+          "options": {
+            "conversions": [
+              {
+                "destinationType": "time",
+                "targetField": "Date"
+              }
+            ],
+            "fields": {}
+          }
+        }
+      ],
+      "type": "barchart"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 13
+      },
+      "id": 102,
+      "panels": [],
+      "title": "Per User",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
       "description": "Total token consumption per user over time",
       "fieldConfig": {
         "defaults": {
-          "color": {"mode": "palette-classic"},
+          "color": {
+            "mode": "palette-classic"
+          },
           "custom": {
             "axisBorderShow": false,
             "axisCenteredZero": false,
@@ -210,26 +487,46 @@
             "lineInterpolation": "smooth",
             "lineWidth": 2,
             "pointSize": 6,
-            "scaleDistribution": {"type": "linear"},
+            "scaleDistribution": {
+              "type": "linear"
+            },
             "showPoints": "auto",
             "spanNulls": true,
-            "stacking": {"group": "A", "mode": "none"},
-            "thresholdsStyle": {"mode": "off"}
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
           },
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
-            "steps": [{"color": "green", "value": null}]
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
           },
           "unit": "short"
         },
         "overrides": []
       },
-      "gridPos": {"h": 10, "w": 24, "x": 0, "y": 4},
+      "gridPos": {
+        "h": 9,
+        "w": 24,
+        "x": 0,
+        "y": 14
+      },
       "id": 5,
       "options": {
         "legend": {
-          "calcs": ["sum", "mean"],
+          "calcs": [
+            "sum",
+            "mean"
+          ],
           "displayMode": "table",
           "placement": "right",
           "showLegend": true,
@@ -243,7 +540,10 @@
       },
       "targets": [
         {
-          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
           "expr": "sum by (date, user) (claude_vertex_estimated_input_tokens{project=~\"$project\", date=~\"$date\"} + claude_vertex_estimated_output_tokens{project=~\"$project\", date=~\"$date\"})",
           "format": "table",
           "instant": true,
@@ -256,9 +556,13 @@
         {
           "id": "organize",
           "options": {
-            "excludeByName": {"Time": true},
+            "excludeByName": {
+              "Time": true
+            },
             "indexByName": {},
-            "renameByName": {"Value": "Tokens"}
+            "renameByName": {
+              "Value": "Tokens"
+            }
           }
         },
         {
@@ -274,14 +578,21 @@
           "id": "sortBy",
           "options": {
             "fields": {},
-            "sort": [{"field": "date"}]
+            "sort": [
+              {
+                "field": "date"
+              }
+            ]
           }
         },
         {
           "id": "convertFieldType",
           "options": {
             "conversions": [
-              {"destinationType": "time", "targetField": "date"}
+              {
+                "destinationType": "time",
+                "targetField": "date"
+              }
             ],
             "fields": {}
           }
@@ -304,7 +615,9 @@
       "description": "Stacked tokens per user per day",
       "fieldConfig": {
         "defaults": {
-          "color": {"mode": "palette-classic"},
+          "color": {
+            "mode": "palette-classic"
+          },
           "custom": {
             "axisBorderShow": false,
             "axisCenteredZero": false,
@@ -319,19 +632,33 @@
               "viz": false
             },
             "lineWidth": 1,
-            "scaleDistribution": {"type": "linear"},
-            "thresholdsStyle": {"mode": "off"}
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
           },
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
-            "steps": [{"color": "green", "value": null}]
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
           },
           "unit": "short"
         },
         "overrides": []
       },
-      "gridPos": {"h": 10, "w": 24, "x": 0, "y": 14},
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 0,
+        "y": 23
+      },
       "id": 6,
       "options": {
         "barRadius": 0.1,
@@ -339,7 +666,9 @@
         "fullHighlight": false,
         "groupWidth": 0.7,
         "legend": {
-          "calcs": ["sum"],
+          "calcs": [
+            "sum"
+          ],
           "displayMode": "table",
           "placement": "right",
           "showLegend": true,
@@ -358,7 +687,10 @@
       },
       "targets": [
         {
-          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
           "expr": "sum by (date, user) (claude_vertex_estimated_input_tokens{project=~\"$project\", date=~\"$date\"} + claude_vertex_estimated_output_tokens{project=~\"$project\", date=~\"$date\"})",
           "format": "table",
           "instant": true,
@@ -371,9 +703,13 @@
         {
           "id": "organize",
           "options": {
-            "excludeByName": {"Time": true},
+            "excludeByName": {
+              "Time": true
+            },
             "indexByName": {},
-            "renameByName": {"Value": "Tokens"}
+            "renameByName": {
+              "Value": "Tokens"
+            }
           }
         },
         {
@@ -389,7 +725,11 @@
           "id": "sortBy",
           "options": {
             "fields": {},
-            "sort": [{"field": "date"}]
+            "sort": [
+              {
+                "field": "date"
+              }
+            ]
           }
         },
         {
@@ -407,134 +747,12 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "description": "Input tokens vs Output tokens per day",
-      "fieldConfig": {
-        "defaults": {
-          "color": {"mode": "palette-classic"},
-          "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "Tokens",
-            "axisPlacement": "auto",
-            "fillOpacity": 80,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "lineWidth": 1,
-            "scaleDistribution": {"type": "linear"},
-            "thresholdsStyle": {"mode": "off"}
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [{"color": "green", "value": null}]
-          },
-          "unit": "short"
-        },
-        "overrides": [
-          {
-            "matcher": {"id": "byName", "options": "Input Tokens"},
-            "properties": [
-              {"id": "color", "value": {"fixedColor": "blue", "mode": "fixed"}}
-            ]
-          },
-          {
-            "matcher": {"id": "byName", "options": "Output Tokens"},
-            "properties": [
-              {"id": "color", "value": {"fixedColor": "orange", "mode": "fixed"}}
-            ]
-          }
-        ]
-      },
-      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 24},
-      "id": 7,
-      "options": {
-        "barRadius": 0.1,
-        "barWidth": 0.8,
-        "fullHighlight": false,
-        "groupWidth": 0.7,
-        "legend": {
-          "calcs": ["sum"],
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "orientation": "auto",
-        "showValue": "auto",
-        "stacking": "normal",
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        },
-        "xTickLabelRotation": -45,
-        "xTickLabelSpacing": 0
-      },
-      "targets": [
-        {
-          "datasource": {"type": "prometheus", "uid": "${datasource}"},
-          "expr": "sum by (date) (claude_vertex_estimated_input_tokens{project=~\"$project\", date=~\"$date\"})",
-          "format": "table",
-          "instant": true,
-          "legendFormat": "Input Tokens",
-          "refId": "A"
-        },
-        {
-          "datasource": {"type": "prometheus", "uid": "${datasource}"},
-          "expr": "sum by (date) (claude_vertex_estimated_output_tokens{project=~\"$project\", date=~\"$date\"})",
-          "format": "table",
-          "instant": true,
-          "legendFormat": "Output Tokens",
-          "refId": "B"
-        }
-      ],
-      "title": "Input vs Output Tokens per Day",
-      "transformations": [
-        {
-          "id": "merge",
-          "options": {}
-        },
-        {
-          "id": "organize",
-          "options": {
-            "excludeByName": {"Time": true},
-            "indexByName": {"date": 0, "Value #A": 1, "Value #B": 2},
-            "renameByName": {
-              "Value #A": "Input Tokens",
-              "Value #B": "Output Tokens",
-              "date": "Date"
-            }
-          }
-        },
-        {
-          "id": "sortBy",
-          "options": {
-            "fields": {},
-            "sort": [{"field": "Date"}]
-          }
-        },
-        {
-          "id": "convertFieldType",
-          "options": {
-            "conversions": [{"destinationType": "time", "targetField": "Date"}],
-            "fields": {}
-          }
-        }
-      ],
-      "type": "barchart"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
       "description": "Token distribution per user",
       "fieldConfig": {
         "defaults": {
-          "color": {"mode": "palette-classic"},
+          "color": {
+            "mode": "palette-classic"
+          },
           "custom": {
             "hideFrom": {
               "legend": false,
@@ -547,19 +765,32 @@
         },
         "overrides": []
       },
-      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 24},
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 12,
+        "y": 23
+      },
       "id": 8,
       "options": {
-        "displayLabels": ["name", "percent"],
+        "displayLabels": [
+          "name",
+          "percent"
+        ],
         "legend": {
           "displayMode": "table",
           "placement": "right",
           "showLegend": true,
-          "values": ["value", "percent"]
+          "values": [
+            "value",
+            "percent"
+          ]
         },
         "pieType": "donut",
         "reduceOptions": {
-          "calcs": ["sum"],
+          "calcs": [
+            "sum"
+          ],
           "fields": "",
           "values": false
         },
@@ -570,7 +801,10 @@
       },
       "targets": [
         {
-          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
           "expr": "sum by (user) (claude_vertex_estimated_input_tokens{project=~\"$project\", date=~\"$date\"} + claude_vertex_estimated_output_tokens{project=~\"$project\", date=~\"$date\"})",
           "legendFormat": "{{user}}",
           "instant": true,
@@ -597,78 +831,160 @@
       "description": "Detailed token table per user",
       "fieldConfig": {
         "defaults": {
-          "color": {"mode": "thresholds"},
+          "color": {
+            "mode": "thresholds"
+          },
           "custom": {
             "align": "auto",
-            "cellOptions": {"type": "auto"},
+            "cellOptions": {
+              "type": "auto"
+            },
             "inspect": false
           },
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
-            "steps": [{"color": "green", "value": null}]
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
           }
         },
         "overrides": [
           {
-            "matcher": {"id": "byName", "options": "Input Tokens"},
+            "matcher": {
+              "id": "byName",
+              "options": "Input Tokens"
+            },
             "properties": [
-              {"id": "custom.cellOptions", "value": {"mode": "gradient", "type": "gauge"}},
-              {"id": "color", "value": {"mode": "continuous-BlYlRd"}}
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "mode": "gradient",
+                  "type": "gauge"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "continuous-BlYlRd"
+                }
+              }
             ]
           },
           {
-            "matcher": {"id": "byName", "options": "Output Tokens"},
+            "matcher": {
+              "id": "byName",
+              "options": "Output Tokens"
+            },
             "properties": [
-              {"id": "custom.cellOptions", "value": {"mode": "gradient", "type": "gauge"}},
-              {"id": "color", "value": {"mode": "continuous-BlYlRd"}}
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "mode": "gradient",
+                  "type": "gauge"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "continuous-BlYlRd"
+                }
+              }
             ]
           },
           {
-            "matcher": {"id": "byName", "options": "Total Tokens"},
+            "matcher": {
+              "id": "byName",
+              "options": "Total Tokens"
+            },
             "properties": [
-              {"id": "custom.cellOptions", "value": {"mode": "gradient", "type": "gauge"}},
-              {"id": "color", "value": {"mode": "continuous-BlYlRd"}}
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "mode": "gradient",
+                  "type": "gauge"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "continuous-BlYlRd"
+                }
+              }
             ]
           },
           {
-            "matcher": {"id": "byName", "options": "User"},
+            "matcher": {
+              "id": "byName",
+              "options": "User"
+            },
             "properties": [
-              {"id": "custom.width", "value": 200}
+              {
+                "id": "custom.width",
+                "value": 200
+              }
             ]
           }
         ]
       },
-      "gridPos": {"h": 10, "w": 24, "x": 0, "y": 32},
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 32
+      },
       "id": 9,
       "options": {
         "cellHeight": "md",
         "footer": {
           "countRows": false,
-          "fields": ["Input Tokens", "Output Tokens", "Total Tokens"],
-          "reducer": ["sum"],
+          "fields": [
+            "Input Tokens",
+            "Output Tokens",
+            "Total Tokens"
+          ],
+          "reducer": [
+            "sum"
+          ],
           "show": true
         },
         "showHeader": true,
-        "sortBy": [{"desc": true, "displayName": "Total Tokens"}]
+        "sortBy": [
+          {
+            "desc": true,
+            "displayName": "Total Tokens"
+          }
+        ]
       },
       "targets": [
         {
-          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
           "expr": "sum by (user) (claude_vertex_estimated_input_tokens{project=~\"$project\", date=~\"$date\"})",
           "format": "table",
           "instant": true,
           "refId": "A"
         },
         {
-          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
           "expr": "sum by (user) (claude_vertex_estimated_output_tokens{project=~\"$project\", date=~\"$date\"})",
           "format": "table",
           "instant": true,
           "refId": "B"
         },
         {
-          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
           "expr": "sum by (user) (claude_vertex_estimated_input_tokens{project=~\"$project\", date=~\"$date\"} + claude_vertex_estimated_output_tokens{project=~\"$project\", date=~\"$date\"})",
           "format": "table",
           "instant": true,
@@ -684,8 +1000,15 @@
         {
           "id": "organize",
           "options": {
-            "excludeByName": {"Time": true},
-            "indexByName": {"user": 0, "Value #A": 1, "Value #B": 2, "Value #C": 3},
+            "excludeByName": {
+              "Time": true
+            },
+            "indexByName": {
+              "user": 0,
+              "Value #A": 1,
+              "Value #B": 2,
+              "Value #C": 3
+            },
             "renameByName": {
               "Value #A": "Input Tokens",
               "Value #B": "Output Tokens",
@@ -698,6 +1021,19 @@
       "type": "table"
     },
     {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 42
+      },
+      "id": 103,
+      "panels": [],
+      "title": "Per Model",
+      "type": "row"
+    },
+    {
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
@@ -705,7 +1041,9 @@
       "description": "Tokens per model",
       "fieldConfig": {
         "defaults": {
-          "color": {"mode": "palette-classic"},
+          "color": {
+            "mode": "palette-classic"
+          },
           "custom": {
             "hideFrom": {
               "legend": false,
@@ -718,19 +1056,32 @@
         },
         "overrides": []
       },
-      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 42},
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 43
+      },
       "id": 10,
       "options": {
-        "displayLabels": ["name", "percent"],
+        "displayLabels": [
+          "name",
+          "percent"
+        ],
         "legend": {
           "displayMode": "table",
           "placement": "right",
           "showLegend": true,
-          "values": ["value", "percent"]
+          "values": [
+            "value",
+            "percent"
+          ]
         },
         "pieType": "donut",
         "reduceOptions": {
-          "calcs": ["sum"],
+          "calcs": [
+            "sum"
+          ],
           "fields": "",
           "values": false
         },
@@ -741,7 +1092,10 @@
       },
       "targets": [
         {
-          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
           "expr": "sum by (model) (claude_vertex_estimated_input_tokens{project=~\"$project\", date=~\"$date\"} + claude_vertex_estimated_output_tokens{project=~\"$project\", date=~\"$date\"})",
           "legendFormat": "{{model}}",
           "instant": true,
@@ -759,7 +1113,9 @@
       "description": "Tokens per model over time",
       "fieldConfig": {
         "defaults": {
-          "color": {"mode": "palette-classic"},
+          "color": {
+            "mode": "palette-classic"
+          },
           "custom": {
             "axisBorderShow": false,
             "axisCenteredZero": false,
@@ -774,19 +1130,33 @@
               "viz": false
             },
             "lineWidth": 1,
-            "scaleDistribution": {"type": "linear"},
-            "thresholdsStyle": {"mode": "off"}
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
           },
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
-            "steps": [{"color": "green", "value": null}]
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
           },
           "unit": "short"
         },
         "overrides": []
       },
-      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 42},
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 43
+      },
       "id": 11,
       "options": {
         "barRadius": 0.1,
@@ -794,7 +1164,9 @@
         "fullHighlight": false,
         "groupWidth": 0.7,
         "legend": {
-          "calcs": ["sum"],
+          "calcs": [
+            "sum"
+          ],
           "displayMode": "table",
           "placement": "right",
           "showLegend": true,
@@ -813,7 +1185,10 @@
       },
       "targets": [
         {
-          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
           "expr": "sum by (date, model) (claude_vertex_estimated_input_tokens{project=~\"$project\", date=~\"$date\"} + claude_vertex_estimated_output_tokens{project=~\"$project\", date=~\"$date\"})",
           "format": "table",
           "instant": true,
@@ -826,9 +1201,13 @@
         {
           "id": "organize",
           "options": {
-            "excludeByName": {"Time": true},
+            "excludeByName": {
+              "Time": true
+            },
             "indexByName": {},
-            "renameByName": {"Value": "Tokens"}
+            "renameByName": {
+              "Value": "Tokens"
+            }
           }
         },
         {
@@ -844,7 +1223,11 @@
           "id": "sortBy",
           "options": {
             "fields": {},
-            "sort": [{"field": "date"}]
+            "sort": [
+              {
+                "field": "date"
+              }
+            ]
           }
         }
       ],
@@ -854,7 +1237,12 @@
   "refresh": "5m",
   "schemaVersion": 38,
   "style": "dark",
-  "tags": ["claude", "vertex-ai", "tokens", "usage"],
+  "tags": [
+    "claude",
+    "vertex-ai",
+    "tokens",
+    "usage"
+  ],
   "templating": {
     "list": [
       {
@@ -873,7 +1261,10 @@
       },
       {
         "current": {},
-        "datasource": {"type": "prometheus", "uid": "${datasource}"},
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${datasource}"
+        },
         "definition": "label_values(claude_vertex_requests_total, project)",
         "hide": 0,
         "includeAll": true,
@@ -881,7 +1272,10 @@
         "multi": true,
         "name": "project",
         "options": [],
-        "query": {"query": "label_values(claude_vertex_requests_total, project)", "refId": "StandardVariableQuery"},
+        "query": {
+          "query": "label_values(claude_vertex_requests_total, project)",
+          "refId": "StandardVariableQuery"
+        },
         "refresh": 2,
         "regex": "",
         "skipUrlSync": false,
@@ -890,7 +1284,10 @@
       },
       {
         "current": {},
-        "datasource": {"type": "prometheus", "uid": "${datasource}"},
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${datasource}"
+        },
         "definition": "label_values(claude_vertex_requests_total{project=~\"$project\"}, date)",
         "hide": 0,
         "includeAll": true,
@@ -898,7 +1295,10 @@
         "multi": true,
         "name": "date",
         "options": [],
-        "query": {"query": "label_values(claude_vertex_requests_total{project=~\"$project\"}, date)", "refId": "StandardVariableQuery"},
+        "query": {
+          "query": "label_values(claude_vertex_requests_total{project=~\"$project\"}, date)",
+          "refId": "StandardVariableQuery"
+        },
         "refresh": 2,
         "regex": "",
         "skipUrlSync": false,
@@ -907,11 +1307,14 @@
       }
     ]
   },
-  "time": {"from": "now-30d", "to": "now"},
+  "time": {
+    "from": "now-30d",
+    "to": "now"
+  },
   "timepicker": {},
   "timezone": "",
   "title": "Claude Vertex AI - Tokens",
   "uid": "claude-vertex-tokens",
-  "version": 2,
+  "version": 3,
   "weekStart": ""
 }

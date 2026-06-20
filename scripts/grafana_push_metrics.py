@@ -16,10 +16,16 @@ from vertex_claude_exporter import (
     DEFAULT_AVG_INPUT_TOKENS,
     DEFAULT_AVG_OUTPUT_TOKENS,
     aggregate_usage,
+    aggregate_usage_by_hour,
     build_filter,
     estimate_cost,
     fetch_logs,
 )
+
+# Fixed Pushgateway job for the live (intra-day) metrics group. Each hourly run
+# re-pushes every hour-so-far under this group, so the push is idempotent and
+# self-healing, and rotates to the new day on the first run after midnight.
+LIVE_JOB_NAME = "claude_vertex_live"
 
 logger = logging.getLogger(__name__)
 
@@ -145,6 +151,7 @@ def push_metrics_to_gateway(
             use_calibrated,
             avg_cache_write,
             avg_cache_read,
+            user_email=email,
         )
         sanitized_email = email.replace("@", "_at_").replace(".", "_")
 
@@ -189,6 +196,104 @@ def push_metrics_to_gateway(
         "total_cost": sum(t["cost"] for t in model_totals.values()),
         "unique_users": len(unique_users),
         "models": list(model_totals.keys()),
+    }
+
+
+def push_live_metrics_to_gateway(
+    hourly_usage: dict,
+    target_date: datetime,
+    pushgateway_url: str,
+    project_id: str,
+    avg_input: int = None,
+    avg_output: int = None,
+    use_calibrated: bool = True,
+    avg_cache_write: int = None,
+    avg_cache_read: int = None,
+):
+    """Push intra-day "live" metrics bucketed by hour.
+
+    Distinct from the daily batch metrics: a separate ``claude_vertex_live_*``
+    family, aggregated at model+hour granularity (no per-user dimension), pushed
+    under the fixed ``claude_vertex_live`` job. ``hourly_usage`` maps
+    ``(model, hour) -> request count`` for the current day so far.
+    """
+    registry = CollectorRegistry()
+    date_str = target_date.strftime("%Y-%m-%d")
+
+    labels = ["model", "hour", "date", "project"]
+    requests_gauge = Gauge(
+        "claude_vertex_live_total_requests",
+        "Live (intra-day) Claude API requests on Vertex AI, by hour",
+        labels,
+        registry=registry,
+    )
+    cost_gauge = Gauge(
+        "claude_vertex_live_total_cost_usd",
+        "Live (intra-day) estimated cost in USD, by hour",
+        labels,
+        registry=registry,
+    )
+    input_tokens_gauge = Gauge(
+        "claude_vertex_live_total_input_tokens",
+        "Live (intra-day) estimated input tokens, by hour",
+        labels,
+        registry=registry,
+    )
+    output_tokens_gauge = Gauge(
+        "claude_vertex_live_total_output_tokens",
+        "Live (intra-day) estimated output tokens, by hour",
+        labels,
+        registry=registry,
+    )
+    cache_write_tokens_gauge = Gauge(
+        "claude_vertex_live_total_cache_write_tokens",
+        "Live (intra-day) estimated prompt cache write tokens, by hour",
+        labels,
+        registry=registry,
+    )
+    cache_read_tokens_gauge = Gauge(
+        "claude_vertex_live_total_cache_read_tokens",
+        "Live (intra-day) estimated prompt cache read tokens, by hour",
+        labels,
+        registry=registry,
+    )
+
+    total_requests = 0
+    total_cost = 0.0
+    models = set()
+
+    for (model, hour), count in hourly_usage.items():
+        cost_info = estimate_cost(
+            count,
+            model,
+            avg_input,
+            avg_output,
+            use_calibrated,
+            avg_cache_write,
+            avg_cache_read,
+        )
+        bucket_labels = dict(model=model, hour=hour, date=date_str, project=project_id)
+        requests_gauge.labels(**bucket_labels).set(count)
+        cost_gauge.labels(**bucket_labels).set(cost_info["cost_usd"])
+        input_tokens_gauge.labels(**bucket_labels).set(cost_info["input_tokens"])
+        output_tokens_gauge.labels(**bucket_labels).set(cost_info["output_tokens"])
+        cache_write_tokens_gauge.labels(**bucket_labels).set(
+            cost_info["cache_write_tokens"]
+        )
+        cache_read_tokens_gauge.labels(**bucket_labels).set(
+            cost_info["cache_read_tokens"]
+        )
+
+        total_requests += count
+        total_cost += cost_info["cost_usd"]
+        models.add(model)
+
+    push_to_gateway(pushgateway_url, job=LIVE_JOB_NAME, registry=registry)
+
+    return {
+        "total_requests": total_requests,
+        "total_cost": total_cost,
+        "models": list(models),
     }
 
 
@@ -245,6 +350,15 @@ def main():
         help="Disable calibrated per-model token averages, use defaults instead",
     )
     parser.add_argument(
+        "--live",
+        action="store_true",
+        help=(
+            "Live mode: query the current day so far, bucket usage by hour, and "
+            "push the claude_vertex_live_* metric family (job 'claude_vertex_live'). "
+            "Defaults --date to today. Run hourly for near-real-time dashboards."
+        ),
+    )
+    parser.add_argument(
         "--dry-run",
         action="store_true",
         help="Collect metrics but do not push to gateway",
@@ -267,6 +381,13 @@ def main():
         except ValueError:
             logger.error("Invalid date format: '%s'. Expected YYYY-MM-DD.", args.date)
             sys.exit(1)
+    elif args.live:
+        # Live mode defaults to the current day (00:00 UTC -> now). build_filter
+        # queries midnight..midnight+1d, which naturally returns everything up to
+        # now since there are no future logs.
+        target_date = datetime.now(timezone.utc).replace(
+            hour=0, minute=0, second=0, microsecond=0
+        )
     else:
         target_date = (datetime.now(timezone.utc) - timedelta(days=1)).replace(
             hour=0, minute=0, second=0, microsecond=0
@@ -305,8 +426,12 @@ def main():
         and args.avg_output_tokens is None
     )
 
-    job_name = args.job or f"claude_vertex_{target_date.strftime('%Y-%m-%d')}"
+    if args.live:
+        job_name = args.job or LIVE_JOB_NAME
+    else:
+        job_name = args.job or f"claude_vertex_{target_date.strftime('%Y-%m-%d')}"
 
+    logger.info("Mode: %s", "live (hourly buckets)" if args.live else "daily")
     logger.info("Project: %s", args.project)
     logger.info("Date: %s", target_date.strftime("%Y-%m-%d"))
     logger.info("Pushgateway: %s", pushgateway_url)
@@ -330,13 +455,63 @@ def main():
         logger.info("No log entries found.")
         sys.exit(0)
 
-    usage = aggregate_usage(entries)
+    usage = aggregate_usage_by_hour(entries) if args.live else aggregate_usage(entries)
 
     if not usage:
         logger.info("No Claude API calls identified.")
         sys.exit(0)
 
     logger.info("Claude API calls identified: %d", sum(usage.values()))
+
+    if args.live:
+        if args.dry_run:
+            logger.info("[DRY RUN] Live metrics that would be pushed:")
+            total_cost = 0
+            for (model, hour), count in sorted(usage.items()):
+                cost_info = estimate_cost(
+                    count,
+                    model,
+                    args.avg_input_tokens,
+                    args.avg_output_tokens,
+                    use_calibrated,
+                    args.avg_cache_write_tokens,
+                    args.avg_cache_read_tokens,
+                )
+                total_cost += cost_info["cost_usd"]
+                logger.info(
+                    "  %sh / %s: %d requests, $%.4f",
+                    hour,
+                    model,
+                    count,
+                    cost_info["cost_usd"],
+                )
+            logger.info("Total estimated cost (today so far): $%.2f", total_cost)
+            logger.info("Metrics NOT pushed (dry run mode)")
+        else:
+            try:
+                result = push_live_metrics_to_gateway(
+                    hourly_usage=usage,
+                    target_date=target_date,
+                    pushgateway_url=pushgateway_url,
+                    project_id=args.project,
+                    avg_input=args.avg_input_tokens,
+                    avg_output=args.avg_output_tokens,
+                    use_calibrated=use_calibrated,
+                    avg_cache_write=args.avg_cache_write_tokens,
+                    avg_cache_read=args.avg_cache_read_tokens,
+                )
+                logger.info("Live metrics pushed successfully to %s", pushgateway_url)
+                logger.info(
+                    "  Total requests (today so far): %d", result["total_requests"]
+                )
+                logger.info(
+                    "  Estimated cost (today so far): $%.2f", result["total_cost"]
+                )
+                logger.info("  Models: %s", ", ".join(result["models"]))
+            except Exception as e:
+                logger.error("Failed to push live metrics: %s", e)
+                sys.exit(1)
+        return
 
     if args.dry_run:
         logger.info("[DRY RUN] Metrics that would be pushed:")
@@ -352,6 +527,7 @@ def main():
                 use_calibrated,
                 args.avg_cache_write_tokens,
                 args.avg_cache_read_tokens,
+                user_email=email,
             )
             total_cost += cost_info["cost_usd"]
             logger.info(

@@ -1,0 +1,107 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: claude-metrics-backfill-30d
+  namespace: mnicolet-gcpvertex-test
+  labels:
+    app: claude-metrics-pusher
+    type: backfill
+spec:
+  activeDeadlineSeconds: 3600
+  backoffLimit: 1
+  ttlSecondsAfterFinished: 86400
+  template:
+    metadata:
+      labels:
+        app: claude-metrics-pusher
+        type: backfill
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: metrics-pusher
+          image: python:3.11-slim
+          command:
+            - /bin/bash
+            - -c
+            - |
+              set -e
+              echo "Installing dependencies..."
+              pip install --quiet --no-cache-dir google-cloud-logging prometheus-client
+              echo "Backfilling last 30 days..."
+              for i in $(seq 30 -1 1); do
+                d=$(date -u -d "$i days ago" +%Y-%m-%d)
+                echo "=== Pushing metrics for $d ==="
+                python /app/grafana_push_metrics.py \
+                  --project "$GCP_PROJECT_ID" \
+                  --pushgateway "$PUSHGATEWAY_URL" \
+                  --date "$d" || echo "WARN: failed for $d, continuing"
+              done
+              echo "Backfill done."
+          env:
+            - name: GCP_PROJECT_ID
+              valueFrom:
+                configMapKeyRef:
+                  name: metrics-pusher-config
+                  key: gcp_project_id
+            - name: PUSHGATEWAY_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: metrics-pusher-config
+                  key: pushgateway_url
+            - name: GOOGLE_APPLICATION_CREDENTIALS
+              value: /var/secrets/google/key.json
+            - name: HTTPS_PROXY
+              valueFrom:
+                configMapKeyRef:
+                  name: metrics-pusher-config
+                  key: https_proxy
+            - name: HTTP_PROXY
+              valueFrom:
+                configMapKeyRef:
+                  name: metrics-pusher-config
+                  key: http_proxy
+            - name: https_proxy
+              valueFrom:
+                configMapKeyRef:
+                  name: metrics-pusher-config
+                  key: https_proxy
+            - name: http_proxy
+              valueFrom:
+                configMapKeyRef:
+                  name: metrics-pusher-config
+                  key: http_proxy
+            - name: NO_PROXY
+              valueFrom:
+                configMapKeyRef:
+                  name: metrics-pusher-config
+                  key: no_proxy
+            - name: no_proxy
+              valueFrom:
+                configMapKeyRef:
+                  name: metrics-pusher-config
+                  key: no_proxy
+            - name: GOOGLE_CLOUD_CPP_ENABLE_CLOG
+              value: "yes"
+          securityContext:
+            allowPrivilegeEscalation: false
+          volumeMounts:
+            - name: script
+              mountPath: /app
+            - name: gcp-credentials
+              mountPath: /var/secrets/google
+              readOnly: true
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+      volumes:
+        - name: script
+          configMap:
+            name: metrics-pusher-script
+            defaultMode: 0755
+        - name: gcp-credentials
+          secret:
+            secretName: gcp-credentials
