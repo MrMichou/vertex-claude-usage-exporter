@@ -31,10 +31,19 @@ spec:
                   set -e
                   echo "Installing dependencies..."
                   pip install --quiet --no-cache-dir google-cloud-logging prometheus-client
-                  echo "Running metrics pusher..."
-                  python /app/grafana_push_metrics.py \
-                    --project "$GCP_PROJECT_ID" \
-                    --pushgateway "$PUSHGATEWAY_URL"
+                  # Self-healing: re-push the last 3 days (idempotent per-date
+                  # overwrite) so a failed night or late log ingestion is
+                  # corrected automatically on the next run.
+                  rc=0
+                  for i in 3 2 1; do
+                    d=$(date -u -d "$i days ago" +%Y-%m-%d)
+                    echo "=== Pushing metrics for $d ==="
+                    python /app/grafana_push_metrics.py \
+                      --project "$GCP_PROJECT_ID" \
+                      --pushgateway "$PUSHGATEWAY_URL" \
+                      --date "$d" || { echo "WARN: failed for $d"; rc=1; }
+                  done
+                  exit $rc
               env:
                 - name: GCP_PROJECT_ID
                   valueFrom:

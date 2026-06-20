@@ -1,0 +1,113 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: claude-metrics-pusher-live
+  namespace: claude-vertex-metrics
+  labels:
+    app: claude-metrics-pusher
+    variant: live
+spec:
+  # Run every hour, on the hour (UTC). Each run re-queries the current day so
+  # far and re-pushes every hourly bucket (idempotent, self-healing).
+  schedule: "0 * * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      activeDeadlineSeconds: 300
+      backoffLimit: 2
+      template:
+        metadata:
+          labels:
+            app: claude-metrics-pusher
+            variant: live
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: metrics-pusher-live
+              image: python:3.11-slim
+              command:
+                - /bin/bash
+                - -c
+                - |
+                  set -e
+                  echo "Installing dependencies..."
+                  pip install --quiet --no-cache-dir google-cloud-logging prometheus-client
+                  d=$(date -u +%Y-%m-%d)
+                  echo "=== Pushing LIVE metrics for $d (current day so far) ==="
+                  python /app/grafana_push_metrics.py \
+                    --project "$GCP_PROJECT_ID" \
+                    --pushgateway "$PUSHGATEWAY_URL" \
+                    --live \
+                    --date "$d"
+              env:
+                - name: GCP_PROJECT_ID
+                  valueFrom:
+                    configMapKeyRef:
+                      name: metrics-pusher-config
+                      key: gcp_project_id
+                - name: PUSHGATEWAY_URL
+                  valueFrom:
+                    configMapKeyRef:
+                      name: metrics-pusher-config
+                      key: pushgateway_url
+                - name: GOOGLE_APPLICATION_CREDENTIALS
+                  value: /var/secrets/google/key.json
+                # Proxy settings for HTTP/HTTPS
+                - name: HTTPS_PROXY
+                  valueFrom:
+                    configMapKeyRef:
+                      name: metrics-pusher-config
+                      key: https_proxy
+                - name: HTTP_PROXY
+                  valueFrom:
+                    configMapKeyRef:
+                      name: metrics-pusher-config
+                      key: http_proxy
+                - name: https_proxy
+                  valueFrom:
+                    configMapKeyRef:
+                      name: metrics-pusher-config
+                      key: https_proxy
+                - name: http_proxy
+                  valueFrom:
+                    configMapKeyRef:
+                      name: metrics-pusher-config
+                      key: http_proxy
+                - name: NO_PROXY
+                  valueFrom:
+                    configMapKeyRef:
+                      name: metrics-pusher-config
+                      key: no_proxy
+                - name: no_proxy
+                  valueFrom:
+                    configMapKeyRef:
+                      name: metrics-pusher-config
+                      key: no_proxy
+                # Force REST API instead of gRPC (gRPC doesn't support HTTP proxy)
+                - name: GOOGLE_CLOUD_CPP_ENABLE_CLOG
+                  value: "yes"
+              securityContext:
+                allowPrivilegeEscalation: false
+              volumeMounts:
+                - name: script
+                  mountPath: /app
+                - name: gcp-credentials
+                  mountPath: /var/secrets/google
+                  readOnly: true
+              resources:
+                requests:
+                  memory: "256Mi"
+                  cpu: "100m"
+                limits:
+                  memory: "512Mi"
+                  cpu: "500m"
+          volumes:
+            - name: script
+              configMap:
+                name: metrics-pusher-script
+                defaultMode: 0755
+            - name: gcp-credentials
+              secret:
+                secretName: gcp-credentials

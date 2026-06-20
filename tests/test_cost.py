@@ -48,21 +48,21 @@ class TestGetPricingForModel:
         assert pricing["cache_write"] == 3.75
         assert pricing["cache_read"] == 0.30
 
-    def test_fable_5(self):
-        pricing = get_pricing_for_model("claude-fable-5")
-        assert pricing["input"] == 10.00
-        assert pricing["output"] == 50.00
-        assert pricing["cache_write"] == 12.50
-        assert pricing["cache_read"] == 1.00
+    def test_fable_5_not_billed(self):
+        """fable-5/opus-4-7: no GCP billing SKU as of Jun 2026 -> priced at 0."""
+        for model in ("claude-fable-5", "claude-opus-4-7"):
+            pricing = get_pricing_for_model(model)
+            assert pricing["input"] == 0.00
+            assert pricing["output"] == 0.00
 
 
 class TestGetTokenAveragesForModel:
     def test_sonnet_calibrated(self):
         avgs = get_token_averages_for_model("claude-sonnet-4-5")
-        assert avgs["input"] == 18569
-        assert avgs["output"] == 666
-        assert avgs["cache_write"] == 11251
-        assert avgs["cache_read"] == 67044
+        assert avgs["input"] == 14089
+        assert avgs["output"] == 641
+        assert avgs["cache_write"] == 12218
+        assert avgs["cache_read"] == 67746
 
     def test_haiku_calibrated(self):
         avgs = get_token_averages_for_model("claude-3-5-haiku")
@@ -72,6 +72,19 @@ class TestGetTokenAveragesForModel:
         avgs = get_token_averages_for_model("unknown-model")
         assert avgs["input"] == 3000
         assert avgs["output"] == 1200
+
+    def test_user_email_ignored(self):
+        """Calibration is uniform per model: user_email must not change averages."""
+        base = get_token_averages_for_model("claude-opus-4-6")
+        for email in (
+            "automation@example.com",
+            "anyone@example.com",
+            None,
+        ):
+            assert (
+                get_token_averages_for_model("claude-opus-4-6", user_email=email)
+                == base
+            )
 
 
 class TestEstimateCost:
@@ -83,15 +96,15 @@ class TestEstimateCost:
 
     def test_calibrated_sonnet(self):
         result = estimate_cost(100, "claude-sonnet-4-5", use_calibrated=True)
-        # input:  100 * 18569 = 1856900 -> /1M * $3.00  = $5.5707
-        # output: 100 * 666   = 66600   -> /1M * $15.00 = $0.9990
-        # write:  100 * 11251 = 1125100 -> /1M * $3.75  = $4.2191
-        # read:   100 * 67044 = 6704400 -> /1M * $0.30  = $2.0113
-        assert result["input_tokens"] == 1856900
-        assert result["output_tokens"] == 66600
-        assert result["cache_write_tokens"] == 1125100
-        assert result["cache_read_tokens"] == 6704400
-        assert result["cost_usd"] == pytest.approx(12.8001, abs=0.001)
+        # input:  100 * 14089 = 1408900 -> /1M * $3.00  = $4.2267
+        # output: 100 * 641   = 64100   -> /1M * $15.00 = $0.9615
+        # write:  100 * 12218 = 1221800 -> /1M * $3.75  = $4.5818
+        # read:   100 * 67746 = 6774600 -> /1M * $0.30  = $2.0324
+        assert result["input_tokens"] == 1408900
+        assert result["output_tokens"] == 64100
+        assert result["cache_write_tokens"] == 1221800
+        assert result["cache_read_tokens"] == 6774600
+        assert result["cost_usd"] == pytest.approx(11.8023, abs=0.001)
 
     def test_override_tokens(self):
         result = estimate_cost(10, "claude-sonnet-4-5", avg_input=1000, avg_output=500)
@@ -104,6 +117,16 @@ class TestEstimateCost:
         result = estimate_cost(10, "claude-sonnet-4-5", use_calibrated=False)
         assert result["input_tokens"] == 30000  # 10 * 3000
         assert result["output_tokens"] == 12000  # 10 * 1200
+
+    def test_cost_independent_of_user(self):
+        """Uniform calibration: cost depends only on count and model, not user."""
+        a_cost = estimate_cost(
+            100, "claude-opus-4-6", user_email="automation@example.com"
+        )["cost_usd"]
+        b_cost = estimate_cost(100, "claude-opus-4-6", user_email="person@example.com")[
+            "cost_usd"
+        ]
+        assert a_cost == b_cost
 
     def test_count_tokens_is_free(self):
         result = estimate_cost(1000, "count-tokens")
@@ -139,9 +162,9 @@ class TestEstimateCost:
         result = estimate_cost(
             100, "claude-sonnet-4-5", avg_cache_read=10000, use_calibrated=True
         )
-        assert result["input_tokens"] == 1856900
-        assert result["output_tokens"] == 66600
-        assert result["cache_write_tokens"] == 1125100  # calibrated, not overridden
+        assert result["input_tokens"] == 1408900
+        assert result["output_tokens"] == 64100
+        assert result["cache_write_tokens"] == 1221800  # calibrated, not overridden
         assert result["cache_read_tokens"] == 1000000  # overridden
-        # 5.5707 + 0.999 + 4.2191 + 1M/1M * $0.30 = 11.0888
-        assert result["cost_usd"] == pytest.approx(11.0888, abs=0.001)
+        # 4.2267 + 0.9615 + 4.5818 + 1M/1M * $0.30 = 10.0700
+        assert result["cost_usd"] == pytest.approx(10.0700, abs=0.001)

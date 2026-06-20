@@ -31,7 +31,7 @@ def generate_report(usage: dict, target_date: datetime, output_file: str):
 
     rows = []
     for (email, model), count in usage.items():
-        cost_info = estimate_cost(count, model)
+        cost_info = estimate_cost(count, model, user_email=email)
 
         rows.append(
             {

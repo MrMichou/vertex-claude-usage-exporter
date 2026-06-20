@@ -19,8 +19,12 @@ def get_pricing_for_model(model_name: str) -> dict:
     return PRICING["default"]
 
 
-def get_token_averages_for_model(model_name: str) -> dict:
-    """Get calibrated token averages for a model, matching longest key first."""
+def get_token_averages_for_model(model_name: str, user_email: str = None) -> dict:
+    """Get calibrated token averages for a model, matching longest key first.
+
+    Calibration is uniform per model: every principal gets the same averages.
+    ``user_email`` is accepted for call-site compatibility but ignored.
+    """
     model_lower = model_name.lower()
     for key in sorted(MODEL_TOKEN_AVERAGES.keys(), key=len, reverse=True):
         if key != "default" and key in model_lower:
@@ -36,11 +40,14 @@ def estimate_cost(
     use_calibrated: bool = True,
     avg_cache_write: int = None,
     avg_cache_read: int = None,
+    user_email: str = None,
 ) -> dict:
     """Estimate cost based on request count and average tokens.
 
     If use_calibrated is True and avg_input/avg_output are None, uses model-specific
-    calibrated token averages derived from actual GCP billing data.
+    calibrated token averages derived from actual GCP billing data. user_email is
+    accepted for call-site compatibility but no longer affects the estimate
+    (calibration is uniform across principals).
 
     Prompt caching tokens (avg_cache_write/avg_cache_read per request) are billed
     at cache_write (1.25x input) and cache_read (0.1x input) rates.
@@ -48,7 +55,7 @@ def estimate_cost(
     pricing = get_pricing_for_model(model_name)
 
     if use_calibrated and avg_input is None and avg_output is None:
-        model_avgs = get_token_averages_for_model(model_name)
+        model_avgs = get_token_averages_for_model(model_name, user_email)
         avg_input = model_avgs["input"]
         avg_output = model_avgs["output"]
         if avg_cache_write is None:
