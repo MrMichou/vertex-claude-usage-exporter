@@ -49,6 +49,22 @@ PRICING = {
         "cache_write": 18.75,
         "cache_read": 1.50,
     },
+    # sonnet-5-5 / haiku-5-5: Anthropic list prices (Oct 2026), cache at the
+    # standard 1.25x / 0.1x multipliers. Not yet seen on the invoice — check
+    # the Vertex SKUs once billed. haiku-5-5 doubles to $0.50/$2.50 for
+    # prompts > 100K tokens, which per-request averages can't model.
+    "claude-sonnet-5-5": {
+        "input": 2.00,
+        "output": 10.00,
+        "cache_write": 2.50,
+        "cache_read": 0.20,
+    },
+    "claude-haiku-5-5": {
+        "input": 0.10,
+        "output": 0.50,
+        "cache_write": 0.125,
+        "cache_read": 0.01,
+    },
     "claude-sonnet-4-6": {
         "input": 3.00,
         "output": 15.00,
@@ -145,6 +161,20 @@ MODEL_TOKEN_AVERAGES = {
     },
     "claude-opus-4": {"input": 8871, "output": 3548, "cache_write": 0, "cache_read": 0},
     "claude-3-opus": {"input": 8871, "output": 3548, "cache_write": 0, "cache_read": 0},
+    # sonnet-5-5 / haiku-5-5: not billing-calibrated yet — provisional reuse
+    # of the sonnet-4-6 / haiku-4-5 profiles. Recalibrate once billed.
+    "claude-sonnet-5-5": {
+        "input": 1833,
+        "output": 988,
+        "cache_write": 13388,
+        "cache_read": 109720,
+    },
+    "claude-haiku-5-5": {
+        "input": 524,
+        "output": 411,
+        "cache_write": 4241,
+        "cache_read": 57766,
+    },
     "claude-sonnet-4-6": {
         "input": 1833,
         "output": 988,

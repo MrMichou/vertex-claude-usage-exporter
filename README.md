@@ -105,6 +105,11 @@ Since Vertex AI audit logs don't include token counts, costs are estimated using
 | claude-sonnet-4-5 | 14,089 | 641 | 12,218 | 67,746 | $3.00 | $15.00 |
 | claude-haiku-4-5 | 524 | 411 | 4,241 | 57,766 | $1.00 | $5.00 |
 | claude-3-5-haiku | 382 | 153 | 0 | 0 | $1.00 | $5.00 |
+| claude-fable-5 | 11,532 | 4,612 | 0 | 0 | $0.00 | $0.00 |
+| claude-sonnet-5-5 ¹ | 1,833 | 988 | 13,388 | 109,720 | $2.00 | $10.00 |
+| claude-haiku-5-5 ¹ | 524 | 411 | 4,241 | 57,766 | $0.10 | $0.50 |
+
+¹ Provisional: no billing data yet, averages reused from sonnet-4-6 / haiku-4-5. Prices are Anthropic list prices; haiku-5-5 doubles to $0.50/$2.50 for prompts > 100K tokens (not modelled).
 
 See `scripts/vertex_claude_exporter/config.py` for the full per-model table. Override the cache averages per run with `--avg-cache-write-tokens` / `--avg-cache-read-tokens`.
 

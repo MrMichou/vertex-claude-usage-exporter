@@ -58,9 +58,14 @@ Two layers, kept strictly separate (distinct metric names + Pushgateway jobs):
 |-------|-------|--------|---------------------|-------------------|
 | claude-3-5-haiku / claude-haiku-4-5 | $1.00 | $5.00 | $1.25 | $0.10 |
 | claude-sonnet-4 / claude-sonnet-4-5 / claude-sonnet-4-6 | $3.00 | $15.00 | $3.75 | $0.30 |
-| claude-opus-4-5 / claude-opus-4-6 / claude-opus-4-7 / claude-opus-4-8 | $5.00 | $25.00 | $6.25 | $0.50 |
-| claude-fable-5 | $10.00 | $50.00 | $12.50 | $1.00 |
+| claude-haiku-5-5 (prompts ≤ 100K) | $0.10 | $0.50 | $0.125 | $0.01 |
+| claude-sonnet-5-5 | $2.00 | $10.00 | $2.50 | $0.20 |
+| claude-opus-4-5 / claude-opus-4-6 / claude-opus-4-8 | $5.00 | $25.00 | $6.25 | $0.50 |
+| claude-fable-5 / claude-opus-4-7 | $0.00 (not billed by GCP, no SKU) | | | |
 | claude-opus-4 | $15.00 | $75.00 | $18.75 | $1.50 |
+
+sonnet-5-5 / haiku-5-5: list prices, token averages provisionally reused from
+sonnet-4-6 / haiku-4-5 until billed (recalibrate then).
 
 Prompt caching: cache token averages calibrated from June 2026 billing (cache SKU
 breakdown). Calibrated averages absorb the account's billed-vs-list factor (CAD +
