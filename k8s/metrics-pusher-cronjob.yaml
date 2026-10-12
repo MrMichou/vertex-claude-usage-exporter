@@ -13,8 +13,11 @@ spec:
   failedJobsHistoryLimit: 3
   jobTemplate:
     spec:
-      activeDeadlineSeconds: 600
+      activeDeadlineSeconds: 900
       backoffLimit: 3
+      # Sans TTL, un Job failed isole reste indefiniment et KubeJobFailed
+      # alerte en boucle (cf. claude-metrics-pusher-live-29722620).
+      ttlSecondsAfterFinished: 86400
       template:
         metadata:
           labels:

@@ -2,10 +2,10 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install dependencies
-RUN pip install --no-cache-dir \
-    google-cloud-logging>=3.5.0 \
-    prometheus-client>=0.17.0
+# Install dependencies (via requirements.txt: unquoted ">=" in a RUN line is a
+# shell redirection, which silently dropped the version constraints)
+COPY requirements.txt /app/
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application
 COPY scripts/vertex_claude_exporter/ /app/vertex_claude_exporter/

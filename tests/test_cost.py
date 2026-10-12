@@ -168,3 +168,35 @@ class TestEstimateCost:
         assert result["cache_read_tokens"] == 1000000  # overridden
         # 4.2267 + 0.9615 + 4.5818 + 1M/1M * $0.30 = 10.0700
         assert result["cost_usd"] == pytest.approx(10.0700, abs=0.001)
+
+
+class TestGen55Models:
+    def test_sonnet_5_5_pricing(self):
+        pricing = get_pricing_for_model("claude-sonnet-5-5")
+        assert pricing == {
+            "input": 2.00,
+            "output": 10.00,
+            "cache_write": 2.50,
+            "cache_read": 0.20,
+        }
+
+    def test_haiku_5_5_pricing(self):
+        pricing = get_pricing_for_model("claude-haiku-5-5")
+        assert pricing == {
+            "input": 0.10,
+            "output": 0.50,
+            "cache_write": 0.125,
+            "cache_read": 0.01,
+        }
+
+    def test_not_matched_by_older_keys(self):
+        """5.5 models must not fall back to default (Sonnet 4 pricing)."""
+        assert get_pricing_for_model("claude-sonnet-5-5")["input"] != 3.00
+        assert get_pricing_for_model("claude-haiku-5-5")["input"] != 3.00
+        assert get_token_averages_for_model("claude-haiku-5-5")["input"] == 524
+
+    def test_haiku_5_5_estimate(self):
+        result = estimate_cost(1000, "claude-haiku-5-5")
+        # 1000 x (524*0.10 + 411*0.50 + 4241*0.125 + 57766*0.01) / 1M
+        expected = (524 * 0.10 + 411 * 0.50 + 4241 * 0.125 + 57766 * 0.01) / 1000
+        assert result["cost_usd"] == round(expected, 4)

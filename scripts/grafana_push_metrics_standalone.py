@@ -77,6 +77,22 @@ PRICING = {
         "cache_write": 18.75,
         "cache_read": 1.50,
     },
+    # sonnet-5-5 / haiku-5-5: Anthropic list prices (Oct 2026), cache at the
+    # standard 1.25x / 0.1x multipliers. Not yet seen on the invoice — check
+    # the Vertex SKUs once billed. haiku-5-5 doubles to $0.50/$2.50 for
+    # prompts > 100K tokens, which per-request averages can't model.
+    "claude-sonnet-5-5": {
+        "input": 2.00,
+        "output": 10.00,
+        "cache_write": 2.50,
+        "cache_read": 0.20,
+    },
+    "claude-haiku-5-5": {
+        "input": 0.10,
+        "output": 0.50,
+        "cache_write": 0.125,
+        "cache_read": 0.01,
+    },
     "claude-sonnet-4-6": {
         "input": 3.00,
         "output": 15.00,
@@ -171,6 +187,20 @@ MODEL_TOKEN_AVERAGES = {
     },
     "claude-opus-4": {"input": 8871, "output": 3548, "cache_write": 0, "cache_read": 0},
     "claude-3-opus": {"input": 8871, "output": 3548, "cache_write": 0, "cache_read": 0},
+    # sonnet-5-5 / haiku-5-5: not billing-calibrated yet — provisional reuse
+    # of the sonnet-4-6 / haiku-4-5 profiles. Recalibrate once billed.
+    "claude-sonnet-5-5": {
+        "input": 1833,
+        "output": 988,
+        "cache_write": 13388,
+        "cache_read": 109720,
+    },
+    "claude-haiku-5-5": {
+        "input": 524,
+        "output": 411,
+        "cache_write": 4241,
+        "cache_read": 57766,
+    },
     "claude-sonnet-4-6": {
         "input": 1833,
         "output": 988,
@@ -674,9 +704,19 @@ def generate_live_prometheus_metrics(
     return "\n".join(lines) + "\n"
 
 
-def push_to_gateway(pushgateway_url: str, job_name: str, metrics_text: str):
-    """Push metrics to Pushgateway using HTTP POST."""
+def push_to_gateway(
+    pushgateway_url: str, job_name: str, metrics_text: str, date_str: str = None
+):
+    """Push metrics to Pushgateway using HTTP POST.
+
+    When ``date_str`` is provided it is added to the grouping key
+    (``/metrics/job/<job>/date/<date>``) so each day is stored under its own
+    group. Without this, ``date`` is only a metric label and a POST replaces all
+    previously pushed dates in the group, wiping daily history.
+    """
     url = f"http://{pushgateway_url}/metrics/job/{job_name}"
+    if date_str:
+        url += f"/date/{date_str}"
     data = metrics_text.encode("utf-8")
     req = urllib.request.Request(url, data=data, method="POST")
     req.add_header("Content-Type", "text/plain; charset=utf-8")
@@ -684,6 +724,22 @@ def push_to_gateway(pushgateway_url: str, job_name: str, metrics_text: str):
     try:
         with urllib.request.urlopen(req, timeout=30) as response:
             return response.status == 200
+    except urllib.error.HTTPError as e:
+        logger.error("HTTP Error: %d - %s", e.code, e.reason)
+        raise
+    except urllib.error.URLError as e:
+        logger.error("URL Error: %s", e.reason)
+        raise
+
+
+def delete_from_gateway(pushgateway_url: str, job_name: str):
+    """Delete a whole metrics group from Pushgateway using HTTP DELETE."""
+    url = f"http://{pushgateway_url}/metrics/job/{job_name}"
+    req = urllib.request.Request(url, method="DELETE")
+
+    try:
+        with urllib.request.urlopen(req, timeout=30) as response:
+            return response.status in (200, 202)
     except urllib.error.HTTPError as e:
         logger.error("HTTP Error: %d - %s", e.code, e.reason)
         raise
@@ -838,11 +894,24 @@ def main():
 
     if not entries:
         logger.info("No log entries found.")
-        sys.exit(0)
+        usage = {}
+    else:
+        usage = (
+            aggregate_usage_by_hour(entries) if args.live else aggregate_usage(entries)
+        )
+        if not usage:
+            logger.info("No Claude API calls identified.")
 
-    usage = aggregate_usage_by_hour(entries) if args.live else aggregate_usage(entries)
     if not usage:
-        logger.info("No Claude API calls identified.")
+        if args.live and not args.dry_run:
+            # Nothing yet today (typically the 00:00 UTC run): clear the live
+            # group so the dashboard doesn't keep showing yesterday's buckets.
+            try:
+                delete_from_gateway(pushgateway_url, LIVE_JOB_NAME)
+                logger.info("Live metrics group cleared (no usage yet today)")
+            except Exception as e:
+                logger.error("Failed to clear live metrics: %s", e)
+                sys.exit(1)
         sys.exit(0)
 
     logger.info("Claude API calls identified: %d", sum(usage.values()))
@@ -874,7 +943,11 @@ def main():
         logger.info("[DRY RUN] Metrics:\n%s", metrics_text)
     else:
         try:
-            push_to_gateway(pushgateway_url, job_name, metrics_text)
+            # Daily metrics: put the date in the grouping key so each day is its
+            # own group and pushes accumulate. Live metrics keep a single group
+            # (whole day re-pushed hourly, rotates at midnight) — no date key.
+            date_key = None if args.live else target_date.strftime("%Y-%m-%d")
+            push_to_gateway(pushgateway_url, job_name, metrics_text, date_key)
             logger.info("Metrics pushed to %s", pushgateway_url)
         except Exception as e:
             logger.error("Failed: %s", e)
