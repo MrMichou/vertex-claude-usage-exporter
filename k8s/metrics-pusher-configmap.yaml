@@ -712,9 +712,19 @@ data:
         return "\n".join(lines) + "\n"
 
 
-    def push_to_gateway(pushgateway_url: str, job_name: str, metrics_text: str):
-        """Push metrics to Pushgateway using HTTP POST."""
+    def push_to_gateway(
+        pushgateway_url: str, job_name: str, metrics_text: str, date_str: str = None
+    ):
+        """Push metrics to Pushgateway using HTTP POST.
+
+        When ``date_str`` is provided it is added to the grouping key
+        (``/metrics/job/<job>/date/<date>``) so each day is stored under its own
+        group. Without this, ``date`` is only a metric label and a POST replaces all
+        previously pushed dates in the group, wiping daily history.
+        """
         url = f"http://{pushgateway_url}/metrics/job/{job_name}"
+        if date_str:
+            url += f"/date/{date_str}"
         data = metrics_text.encode("utf-8")
         req = urllib.request.Request(url, data=data, method="POST")
         req.add_header("Content-Type", "text/plain; charset=utf-8")
@@ -941,7 +951,11 @@ data:
             logger.info("[DRY RUN] Metrics:\n%s", metrics_text)
         else:
             try:
-                push_to_gateway(pushgateway_url, job_name, metrics_text)
+                # Daily metrics: put the date in the grouping key so each day is its
+                # own group and pushes accumulate. Live metrics keep a single group
+                # (whole day re-pushed hourly, rotates at midnight) — no date key.
+                date_key = None if args.live else target_date.strftime("%Y-%m-%d")
+                push_to_gateway(pushgateway_url, job_name, metrics_text, date_key)
                 logger.info("Metrics pushed to %s", pushgateway_url)
             except Exception as e:
                 logger.error("Failed: %s", e)
