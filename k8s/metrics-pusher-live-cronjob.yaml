@@ -15,8 +15,14 @@ spec:
   failedJobsHistoryLimit: 3
   jobTemplate:
     spec:
-      activeDeadlineSeconds: 300
+      # 300s etait trop court: le pip install passe par le proxy et un
+      # ralentissement pypi suffisait a declencher DeadlineExceeded.
+      activeDeadlineSeconds: 900
       backoffLimit: 2
+      # Sans TTL, un Job failed isole reste indefiniment (failedJobsHistoryLimit
+      # ne l'evince jamais) et KubeJobFailed alerte en boucle. 24h laisse le
+      # temps d'investiguer puis l'objet disparait tout seul.
+      ttlSecondsAfterFinished: 86400
       template:
         metadata:
           labels:
