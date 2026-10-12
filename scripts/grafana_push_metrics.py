@@ -10,7 +10,12 @@ import sys
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 
-from prometheus_client import CollectorRegistry, Gauge, push_to_gateway
+from prometheus_client import (
+    CollectorRegistry,
+    Gauge,
+    delete_from_gateway,
+    push_to_gateway,
+)
 
 from vertex_claude_exporter import (
     DEFAULT_AVG_INPUT_TOKENS,
@@ -297,6 +302,11 @@ def push_live_metrics_to_gateway(
     }
 
 
+def clear_live_metrics(pushgateway_url: str):
+    """Delete the live metrics group (used when the current day has no usage)."""
+    delete_from_gateway(pushgateway_url, job=LIVE_JOB_NAME)
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Push Claude Vertex AI usage metrics to Prometheus Pushgateway"
@@ -453,12 +463,24 @@ def main():
 
     if not entries:
         logger.info("No log entries found.")
-        sys.exit(0)
-
-    usage = aggregate_usage_by_hour(entries) if args.live else aggregate_usage(entries)
+        usage = {}
+    else:
+        usage = (
+            aggregate_usage_by_hour(entries) if args.live else aggregate_usage(entries)
+        )
+        if not usage:
+            logger.info("No Claude API calls identified.")
 
     if not usage:
-        logger.info("No Claude API calls identified.")
+        if args.live and not args.dry_run:
+            # Nothing yet today (typically the 00:00 UTC run): clear the live
+            # group so the dashboard doesn't keep showing yesterday's buckets.
+            try:
+                clear_live_metrics(pushgateway_url)
+                logger.info("Live metrics group cleared (no usage yet today)")
+            except Exception as e:
+                logger.error("Failed to clear live metrics: %s", e)
+                sys.exit(1)
         sys.exit(0)
 
     logger.info("Claude API calls identified: %d", sum(usage.values()))

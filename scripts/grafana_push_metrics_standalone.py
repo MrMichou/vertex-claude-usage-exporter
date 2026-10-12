@@ -692,6 +692,22 @@ def push_to_gateway(pushgateway_url: str, job_name: str, metrics_text: str):
         raise
 
 
+def delete_from_gateway(pushgateway_url: str, job_name: str):
+    """Delete a whole metrics group from Pushgateway using HTTP DELETE."""
+    url = f"http://{pushgateway_url}/metrics/job/{job_name}"
+    req = urllib.request.Request(url, method="DELETE")
+
+    try:
+        with urllib.request.urlopen(req, timeout=30) as response:
+            return response.status in (200, 202)
+    except urllib.error.HTTPError as e:
+        logger.error("HTTP Error: %d - %s", e.code, e.reason)
+        raise
+    except urllib.error.URLError as e:
+        logger.error("URL Error: %s", e.reason)
+        raise
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Push Claude usage metrics to Prometheus Pushgateway"
@@ -838,11 +854,24 @@ def main():
 
     if not entries:
         logger.info("No log entries found.")
-        sys.exit(0)
+        usage = {}
+    else:
+        usage = (
+            aggregate_usage_by_hour(entries) if args.live else aggregate_usage(entries)
+        )
+        if not usage:
+            logger.info("No Claude API calls identified.")
 
-    usage = aggregate_usage_by_hour(entries) if args.live else aggregate_usage(entries)
     if not usage:
-        logger.info("No Claude API calls identified.")
+        if args.live and not args.dry_run:
+            # Nothing yet today (typically the 00:00 UTC run): clear the live
+            # group so the dashboard doesn't keep showing yesterday's buckets.
+            try:
+                delete_from_gateway(pushgateway_url, LIVE_JOB_NAME)
+                logger.info("Live metrics group cleared (no usage yet today)")
+            except Exception as e:
+                logger.error("Failed to clear live metrics: %s", e)
+                sys.exit(1)
         sys.exit(0)
 
     logger.info("Claude API calls identified: %d", sum(usage.values()))
