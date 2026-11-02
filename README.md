@@ -154,6 +154,8 @@ If you prefer not to use Helm, raw manifests are available in `k8s/`:
 
 Both mount the same script ConfigMap, config and credentials.
 
+- `k8s/pushgateway.yaml` + `k8s/pushgateway-pvc.yaml` — Pushgateway persisted on a 1Gi RBD PVC (`csi-rbd-sc`, RWO, `strategy: Recreate`); a `rollout restart` no longer wipes pushed metrics.
+
 ### Cron (bare metal)
 
 ```bash

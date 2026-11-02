@@ -17,6 +17,8 @@ spec:
       labels:
         app: pushgateway
     spec:
+      securityContext:
+        fsGroup: 65534
       containers:
         - name: pushgateway
           image: prom/pushgateway:v1.9.0
@@ -31,26 +33,31 @@ spec:
               mountPath: /data
           resources:
             requests:
-              memory: "64Mi"
+              memory: "128Mi"
               cpu: "50m"
             limits:
-              memory: "128Mi"
-              cpu: "100m"
+              memory: "256Mi"
+              cpu: "200m"
           livenessProbe:
             httpGet:
               path: /-/healthy
               port: 9091
-            initialDelaySeconds: 10
+            initialDelaySeconds: 30
             periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
           readinessProbe:
             httpGet:
               path: /-/ready
               port: 9091
-            initialDelaySeconds: 5
+            initialDelaySeconds: 10
             periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
       volumes:
         - name: pushgateway-data
-          emptyDir: {}
+          persistentVolumeClaim:
+            claimName: pushgateway-data
 ---
 apiVersion: v1
 kind: Service
